@@ -1,0 +1,5 @@
+{
+  "name": "NanoLayer Studio",
+  "description": "A professional-grade image editor powered by Gemini Nano Banana (2.5 Flash Image) for generative editing and Gemini 3 Pro for deep image analysis. Supports PSD import and layer-based workflows.",
+  "requestFramePermissions": []
+}
