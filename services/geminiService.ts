@@ -1,12 +1,14 @@
+
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
 /**
- * Edits an image using the Gemini 2.5 Flash Image ("Nano Banana") model.
+ * Edits an image using the specified Gemini model.
  * @param imageBase64 Base64 encoded string of the image (PNG/JPEG).
  * @param prompt Text instruction for the edit.
+ * @param model The model to use ('gemini-2.5-flash-image' or 'gemini-3-pro-image-preview').
  * @param systemInstruction Optional system instruction to guide the style/behavior.
  * @param referenceImageBase64 Optional second image to use as context/style reference.
  * @returns Promise resolving to the edited image as a Base64 string.
@@ -14,6 +16,7 @@ const ai = new GoogleGenAI({ apiKey });
 export const editImageWithGemini = async (
   imageBase64: string,
   prompt: string,
+  model: string,
   systemInstruction?: string,
   referenceImageBase64?: string
 ): Promise<string> => {
@@ -49,7 +52,7 @@ export const editImageWithGemini = async (
     });
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image', // Nano Banana
+      model: model, 
       contents: {
         parts: parts,
       },
@@ -59,7 +62,6 @@ export const editImageWithGemini = async (
     });
 
     // Extract image from response
-    // Nano Banana response structure usually has the image in the parts
     const responseParts = response.candidates?.[0]?.content?.parts;
     if (!responseParts) throw new Error("No content generated");
 

@@ -1,8 +1,9 @@
+
 import React, { useState, useCallback, useRef } from 'react';
 import LayerManager from './components/LayerManager';
 import Workspace from './components/Workspace';
 import AnalysisPanel from './components/AnalysisPanel';
-import { Layer, ToolMode, AnalysisResult, SelectionRect } from './types';
+import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel } from './types';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, exportToPsd } from './utils/psdHelper';
 import { editImageWithGemini, analyzeImageWithGemini } from './services/geminiService';
 
@@ -19,6 +20,10 @@ const App: React.FC = () => {
   const [systemInstruction, setSystemInstruction] = useState('');
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
   
+  // Model Selection State
+  const [selectedModel, setSelectedModel] = useState<ImageGenerationModel>('gemini-2.5-flash-image');
+  const [showModelSelector, setShowModelSelector] = useState(false);
+
   // Reference Layer State
   const [referenceLayerId, setReferenceLayerId] = useState<string | null>(null);
   const [showRefSelector, setShowRefSelector] = useState(false);
@@ -196,10 +201,11 @@ const App: React.FC = () => {
               }
           }
 
-          // Gemini 2.5 Flash Image Edit
+          // Gemini Image Edit
           const newImageBase64 = await editImageWithGemini(
               base64Img, 
               prompt, 
+              selectedModel,
               systemInstruction,
               referenceBase64
           );
@@ -219,7 +225,7 @@ const App: React.FC = () => {
           
           const newLayer: Layer = {
               id: `layer-${Date.now()}`,
-              name: `Edit: ${prompt.substring(0, 15)}... ${selection ? '(Region)' : ''}`,
+              name: `Edit: ${prompt.substring(0, 15)}... (${selectedModel === 'gemini-2.5-flash-image' ? '2.5' : '3.0'})`,
               visible: true,
               opacity: 1,
               canvas: finalLayerCanvas,
@@ -437,6 +443,47 @@ const App: React.FC = () => {
                 </div>
             )}
             
+            {/* Model Selector Popover */}
+            {showModelSelector && (
+                 <div className="absolute bottom-14 left-10 w-56 bg-slate-800 border border-slate-600 rounded-xl p-2 shadow-xl mb-2 z-30">
+                    <div className="flex justify-between items-center mb-2 px-2">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Model</span>
+                        <button onClick={() => setShowModelSelector(false)} className="text-slate-400 hover:text-white">
+                            <i className="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div className="space-y-1">
+                        <button 
+                            onClick={() => {
+                                setSelectedModel('gemini-2.5-flash-image');
+                                setShowModelSelector(false);
+                            }}
+                            className={`w-full flex items-center p-2 rounded text-left ${selectedModel === 'gemini-2.5-flash-image' ? 'bg-blue-900/40 text-blue-200 border border-blue-500/30' : 'hover:bg-slate-700 text-slate-300'}`}
+                        >
+                            <i className="fa-solid fa-bolt text-yellow-400 w-6 text-center"></i>
+                            <div>
+                                <div className="text-xs font-bold">Gemini 2.5 Flash</div>
+                                <div className="text-[10px] opacity-70">Fast & Efficient (Nano Banana)</div>
+                            </div>
+                        </button>
+
+                        <button 
+                            onClick={() => {
+                                setSelectedModel('gemini-3-pro-image-preview');
+                                setShowModelSelector(false);
+                            }}
+                            className={`w-full flex items-center p-2 rounded text-left ${selectedModel === 'gemini-3-pro-image-preview' ? 'bg-blue-900/40 text-blue-200 border border-blue-500/30' : 'hover:bg-slate-700 text-slate-300'}`}
+                        >
+                            <i className="fa-solid fa-gem text-purple-400 w-6 text-center"></i>
+                             <div>
+                                <div className="text-xs font-bold">Gemini 3.0 Pro</div>
+                                <div className="text-[10px] opacity-70">High Fidelity (Pro Image)</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            )}
+            
             {/* Reference Layer Selector Popover */}
             {showRefSelector && (
                 <div className="absolute bottom-14 left-10 w-64 bg-slate-800 border border-slate-600 rounded-xl p-2 shadow-xl mb-2 z-30">
@@ -477,11 +524,25 @@ const App: React.FC = () => {
                 {/* Tools Group */}
                 {(mode === ToolMode.EDIT || mode === ToolMode.SELECT) && (
                     <div className="flex items-center gap-1 border-r border-slate-700 pr-2 mr-1">
+                         {/* Model Toggle */}
+                         <button 
+                            onClick={() => {
+                                setShowModelSelector(!showModelSelector);
+                                setShowSystemPrompt(false);
+                                setShowRefSelector(false);
+                            }}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${selectedModel.includes('pro') ? 'bg-purple-900/50 text-purple-400 border border-purple-500/50' : 'hover:bg-slate-800 text-slate-400'}`}
+                            title="Select Model"
+                        >
+                            <span className="text-[10px] font-bold">{selectedModel === 'gemini-2.5-flash-image' ? '2.5' : '3.0'}</span>
+                        </button>
+
                          {/* System Prompt Toggle */}
                         <button 
                             onClick={() => {
                                 setShowSystemPrompt(!showSystemPrompt);
                                 setShowRefSelector(false);
+                                setShowModelSelector(false);
                             }}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${systemInstruction.trim() ? 'bg-blue-900/50 text-blue-400 border border-blue-500/50' : 'hover:bg-slate-800 text-slate-400'}`}
                             title="Set System Instructions"
@@ -494,6 +555,7 @@ const App: React.FC = () => {
                             onClick={() => {
                                 setShowRefSelector(!showRefSelector);
                                 setShowSystemPrompt(false);
+                                setShowModelSelector(false);
                             }}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${referenceLayerId ? 'bg-indigo-900/50 text-indigo-400 border border-indigo-500/50' : 'hover:bg-slate-800 text-slate-400'}`}
                             title="Add Reference Layer"
@@ -557,13 +619,13 @@ const App: React.FC = () => {
       {isProcessing && (mode === ToolMode.EDIT || mode === ToolMode.SELECT) && (
         <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
             <div className="relative">
-                <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center text-blue-400">
+                <div className={`w-16 h-16 border-4 border-t-transparent rounded-full animate-spin ${selectedModel.includes('pro') ? 'border-purple-500/30 border-t-purple-500' : 'border-blue-500/30 border-t-blue-500'}`}></div>
+                <div className={`absolute inset-0 flex items-center justify-center ${selectedModel.includes('pro') ? 'text-purple-400' : 'text-blue-400'}`}>
                     <i className="fa-solid fa-wand-magic-sparkles fa-beat"></i>
                 </div>
             </div>
-            <p className="mt-4 text-blue-200 font-medium tracking-wide">
-                {referenceLayerId ? 'Merging style from reference...' : (selection ? 'Gemini is editing the selection...' : 'Gemini 2.5 Flash is editing...')}
+            <p className={`mt-4 font-medium tracking-wide ${selectedModel.includes('pro') ? 'text-purple-200' : 'text-blue-200'}`}>
+                {referenceLayerId ? 'Merging style from reference...' : (selection ? 'Gemini is editing the selection...' : `Editing with ${selectedModel === 'gemini-3-pro-image-preview' ? 'Gemini 3 Pro' : 'Nano Banana'}...`)}
             </p>
         </div>
       )}

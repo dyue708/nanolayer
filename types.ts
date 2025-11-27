@@ -1,3 +1,4 @@
+
 export interface Layer {
   id: string;
   name: string;
@@ -30,3 +31,5 @@ export interface SelectionRect {
   width: number;
   height: number;
 }
+
+export type ImageGenerationModel = 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview';
