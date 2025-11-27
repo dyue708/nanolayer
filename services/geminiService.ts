@@ -2,7 +2,10 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 const getAiClient = (customKey?: string) => {
-    return new GoogleGenAI({ apiKey: customKey || process.env.API_KEY });
+    if (!customKey) {
+        throw new Error("API Key is missing. Please configure it in Settings.");
+    }
+    return new GoogleGenAI({ apiKey: customKey });
 };
 
 /**

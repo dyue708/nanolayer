@@ -34,13 +34,14 @@ export const translations = {
     settings: "Settings",
     language: "Language",
     apiKey: "API Key",
-    apiKeyPlaceholder: "Enter custom API Key (optional)",
+    apiKeyPlaceholder: "Enter custom API Key (Required)",
     save: "Save",
     cancel: "Cancel",
-    apiKeyHelp: "Leave empty to use the default system key. Your key is stored locally.",
+    apiKeyHelp: "Your API Key is required to use Gemini models. It is stored locally in your browser.",
     loadingEdit: "Editing with",
     loadingRef: "Merging style from reference...",
     loadingSelection: "Gemini is editing the selection...",
+    apiKeyRequired: "API Key is required. Please configure it in Settings.",
   },
   zh: {
     appTitle: "NanoLayer",
@@ -74,13 +75,14 @@ export const translations = {
     settings: "设置",
     language: "语言",
     apiKey: "API Key",
-    apiKeyPlaceholder: "输入自定义 API Key (可选)",
+    apiKeyPlaceholder: "输入 API Key (必填)",
     save: "保存",
     cancel: "取消",
-    apiKeyHelp: "留空则使用默认系统 Key。您的 Key 仅保存在本地。",
+    apiKeyHelp: "您需要提供 API Key 才能使用 Gemini 模型。Key 仅保存在您的本地浏览器中。",
     loadingEdit: "正在使用",
     loadingRef: "正在融合参考图风格...",
     loadingSelection: "Gemini 正在编辑选区...",
+    apiKeyRequired: "需要配置 API Key。请在设置中输入。",
   }
 };
 

@@ -171,6 +171,12 @@ const App: React.FC = () => {
   const handleGeminiAction = async () => {
     if (!activeLayerId || !prompt.trim()) return;
 
+    if (!apiKey) {
+        alert(t(language, 'apiKeyRequired'));
+        setShowSettings(true);
+        return;
+    }
+
     const activeLayer = layers.find(l => l.id === activeLayerId);
     if (!activeLayer) return;
 
@@ -368,7 +374,7 @@ const App: React.FC = () => {
              
              <button 
                 onClick={() => setShowSettings(true)}
-                className="text-slate-400 hover:text-white px-2 py-1 transition-colors"
+                className={`px-2 py-1 transition-colors ${!apiKey ? 'text-orange-400 animate-pulse' : 'text-slate-400 hover:text-white'}`}
                 title={t(language, 'settings')}
              >
                 <i className="fa-solid fa-gear"></i>
