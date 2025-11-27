@@ -33,3 +33,5 @@ export interface SelectionRect {
 }
 
 export type ImageGenerationModel = 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview';
+
+export type Language = 'en' | 'zh';

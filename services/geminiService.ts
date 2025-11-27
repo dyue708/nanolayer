@@ -1,11 +1,13 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+const getAiClient = (customKey?: string) => {
+    return new GoogleGenAI({ apiKey: customKey || process.env.API_KEY });
+};
 
 /**
  * Edits an image using the specified Gemini model.
+ * @param apiKey Optional custom API key.
  * @param imageBase64 Base64 encoded string of the image (PNG/JPEG).
  * @param prompt Text instruction for the edit.
  * @param model The model to use ('gemini-2.5-flash-image' or 'gemini-3-pro-image-preview').
@@ -14,6 +16,7 @@ const ai = new GoogleGenAI({ apiKey });
  * @returns Promise resolving to the edited image as a Base64 string.
  */
 export const editImageWithGemini = async (
+  apiKey: string | undefined,
   imageBase64: string,
   prompt: string,
   model: string,
@@ -21,6 +24,8 @@ export const editImageWithGemini = async (
   referenceImageBase64?: string
 ): Promise<string> => {
   try {
+    const ai = getAiClient(apiKey);
+    
     // Strip header if present to get raw base64
     const cleanBase64 = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
 
@@ -80,15 +85,18 @@ export const editImageWithGemini = async (
 
 /**
  * Analyzes an image using the Gemini 3 Pro Preview model.
+ * @param apiKey Optional custom API key.
  * @param imageBase64 Base64 encoded string of the image.
  * @param prompt Specific question or "Describe this image" default.
  * @returns Promise resolving to the text description.
  */
 export const analyzeImageWithGemini = async (
+  apiKey: string | undefined,
   imageBase64: string,
   prompt: string = "Describe this image in detail, focusing on visual elements, style, and composition."
 ): Promise<string> => {
   try {
+    const ai = getAiClient(apiKey);
     const cleanBase64 = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
 
     const response: GenerateContentResponse = await ai.models.generateContent({

@@ -1,19 +1,22 @@
+
 import React from 'react';
-import { AnalysisResult } from '../types';
+import { AnalysisResult, Language } from '../types';
+import { t } from '../utils/i18n';
 
 interface AnalysisPanelProps {
   results: AnalysisResult[];
   isLoading: boolean;
   onClose: () => void;
+  lang: Language;
 }
 
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ results, isLoading, onClose }) => {
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ results, isLoading, onClose, lang }) => {
   return (
     <div className="w-80 h-full bg-slate-900 border-l border-slate-700 flex flex-col shadow-xl absolute right-0 top-0 z-20">
       <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800">
         <h3 className="font-semibold text-slate-100 flex items-center gap-2">
             <i className="fa-solid fa-wand-magic-sparkles text-purple-400"></i>
-            Analysis
+            {t(lang, 'analysis')}
         </h3>
         <button onClick={onClose} className="text-slate-400 hover:text-white">
           <i className="fa-solid fa-xmark"></i>
@@ -28,7 +31,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ results, isLoading, onClo
                  <div className="h-4 bg-slate-700 rounded w-5/6"></div>
                  <div className="flex items-center gap-2 text-slate-400 text-sm mt-2">
                      <i className="fa-solid fa-circle-notch fa-spin"></i>
-                     Gemini 3 Pro is thinking...
+                     {t(lang, 'thinking')}
                  </div>
              </div>
          )}
@@ -46,7 +49,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ results, isLoading, onClo
          {!isLoading && results.length === 0 && (
              <div className="text-center text-slate-500 mt-10">
                  <i className="fa-solid fa-microscope text-2xl mb-2 opacity-50"></i>
-                 <p>Select a layer and ask Gemini to analyze it.</p>
+                 <p>{t(lang, 'noAnalysis')}</p>
              </div>
          )}
       </div>

@@ -1,11 +1,12 @@
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import LayerManager from './components/LayerManager';
 import Workspace from './components/Workspace';
 import AnalysisPanel from './components/AnalysisPanel';
-import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel } from './types';
+import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, Language } from './types';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, exportToPsd } from './utils/psdHelper';
 import { editImageWithGemini, analyzeImageWithGemini } from './services/geminiService';
+import { t } from './utils/i18n';
 
 const App: React.FC = () => {
   const [layers, setLayers] = useState<Layer[]>([]);
@@ -30,6 +31,27 @@ const App: React.FC = () => {
 
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [showAnalysis, setShowAnalysis] = useState(false);
+
+  // Settings: API Key & Language
+  const [showSettings, setShowSettings] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [language, setLanguage] = useState<Language>('en');
+
+  // Load Settings from LocalStorage on mount
+  useEffect(() => {
+      const storedKey = localStorage.getItem('nano_api_key');
+      const storedLang = localStorage.getItem('nano_lang');
+      if (storedKey) setApiKey(storedKey);
+      if (storedLang && (storedLang === 'en' || storedLang === 'zh')) setLanguage(storedLang as Language);
+  }, []);
+
+  const saveSettings = (newKey: string, newLang: Language) => {
+      setApiKey(newKey);
+      setLanguage(newLang);
+      localStorage.setItem('nano_api_key', newKey);
+      localStorage.setItem('nano_lang', newLang);
+      setShowSettings(false);
+  };
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addLayerInputRef = useRef<HTMLInputElement>(null);
@@ -90,13 +112,10 @@ const App: React.FC = () => {
           const ctx = canvas.getContext('2d');
 
           if (ctx) {
-             // Calculate scale to fit (contain) within canvas if larger, or just center if smaller?
-             // Let's implement "Contain" logic to ensure it fits nicely.
              const scale = Math.min(
                  canvasDims.width / img.width, 
                  canvasDims.height / img.height
              );
-             // If image is smaller than canvas, don't upscale it (optional, but usually better quality)
              const finalScale = scale > 1 ? 1 : scale;
              
              const w = img.width * finalScale;
@@ -130,7 +149,6 @@ const App: React.FC = () => {
 
   const handleLayerSelect = (id: string) => {
       setActiveLayerId(id);
-      // If we select the reference layer as active, clear the reference to avoid self-reference
       if (id === referenceLayerId) {
           setReferenceLayerId(null);
       }
@@ -201,8 +219,9 @@ const App: React.FC = () => {
               }
           }
 
-          // Gemini Image Edit
+          // Gemini Image Edit with dynamic apiKey
           const newImageBase64 = await editImageWithGemini(
+              apiKey,
               base64Img, 
               prompt, 
               selectedModel,
@@ -219,17 +238,16 @@ const App: React.FC = () => {
           const ctx = finalLayerCanvas.getContext('2d');
           
           if (ctx) {
-              // Draw result at the correct position (offset by selection if applicable)
               ctx.drawImage(resultCanvas, targetX, targetY, targetW, targetH);
           }
           
           const newLayer: Layer = {
               id: `layer-${Date.now()}`,
-              name: `Edit: ${prompt.substring(0, 15)}... (${selectedModel === 'gemini-2.5-flash-image' ? '2.5' : '3.0'})`,
+              name: `Edit: ${prompt.substring(0, 15)}...`,
               visible: true,
               opacity: 1,
               canvas: finalLayerCanvas,
-              zIndex: layers.length // Top
+              zIndex: layers.length
           };
           
           setLayers(prev => [...prev, newLayer]);
@@ -240,9 +258,9 @@ const App: React.FC = () => {
           if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
 
       } else if (mode === ToolMode.ANALYZE) {
-          // Gemini 3 Pro Analysis
+          // Gemini 3 Pro Analysis with dynamic apiKey
           setShowAnalysis(true);
-          const text = await analyzeImageWithGemini(base64Img, prompt);
+          const text = await analyzeImageWithGemini(apiKey, base64Img, prompt);
           setAnalysisResults(prev => [{ text, timestamp: Date.now() }, ...prev]);
           setPrompt('');
       }
@@ -298,7 +316,7 @@ const App: React.FC = () => {
                 <i className="fa-solid fa-layer-group"></i>
             </div>
             <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">
-                NanoLayer <span className="font-light opacity-75">Studio</span>
+                {t(language, 'appTitle')} <span className="font-light opacity-75">{t(language, 'appSubtitle')}</span>
             </h1>
         </div>
 
@@ -324,9 +342,8 @@ const App: React.FC = () => {
              <button 
                 onClick={() => fileInputRef.current?.click()}
                 className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2"
-                title="Open new project (clears current workspace)"
              >
-                <i className="fa-solid fa-folder-open"></i> Open
+                <i className="fa-solid fa-folder-open"></i> {t(language, 'open')}
              </button>
              
              <div className="h-5 w-px bg-slate-700 mx-1"></div>
@@ -336,7 +353,7 @@ const App: React.FC = () => {
                 disabled={layers.length === 0}
                 className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50"
              >
-                <i className="fa-solid fa-file-image"></i> Export PNG
+                <i className="fa-solid fa-file-image"></i> {t(language, 'exportPng')}
              </button>
 
              <button 
@@ -344,7 +361,17 @@ const App: React.FC = () => {
                 disabled={layers.length === 0}
                 className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50"
              >
-                <i className="fa-solid fa-file-export"></i> Export PSD
+                <i className="fa-solid fa-file-export"></i> {t(language, 'exportPsd')}
+             </button>
+
+             <div className="h-5 w-px bg-slate-700 mx-1"></div>
+             
+             <button 
+                onClick={() => setShowSettings(true)}
+                className="text-slate-400 hover:text-white px-2 py-1 transition-colors"
+                title={t(language, 'settings')}
+             >
+                <i className="fa-solid fa-gear"></i>
              </button>
         </div>
       </header>
@@ -361,7 +388,7 @@ const App: React.FC = () => {
                     className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${
                         mode === ToolMode.EDIT ? 'bg-blue-600 text-white shadow-blue-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
                     }`}
-                    title="Generative Edit (Nano Banana)"
+                    title={t(language, 'toolEdit')}
                  >
                     <i className="fa-solid fa-wand-magic-sparkles"></i>
                  </button>
@@ -371,7 +398,7 @@ const App: React.FC = () => {
                     className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${
                         mode === ToolMode.SELECT ? 'bg-emerald-600 text-white shadow-emerald-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
                     }`}
-                    title="Select Region"
+                    title={t(language, 'toolSelect')}
                  >
                     <i className="fa-solid fa-crop-simple"></i>
                  </button>
@@ -386,7 +413,7 @@ const App: React.FC = () => {
                     className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${
                         mode === ToolMode.ANALYZE ? 'bg-purple-600 text-white shadow-purple-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
                     }`}
-                    title="Analyze (Gemini 3 Pro)"
+                    title={t(language, 'toolAnalyze')}
                  >
                     <i className="fa-solid fa-eye"></i>
                  </button>
@@ -402,6 +429,7 @@ const App: React.FC = () => {
             onOpacityChange={handleOpacityChange}
             onDeleteLayer={handleDeleteLayer}
             onAddLayer={() => addLayerInputRef.current?.click()}
+            lang={language}
         />
 
         {/* Center Canvas */}
@@ -412,6 +440,7 @@ const App: React.FC = () => {
             mode={mode}
             selection={selection}
             onSelectionChange={setSelection}
+            lang={language}
         />
 
         {/* Right Panel: Analysis (Conditional) */}
@@ -420,6 +449,7 @@ const App: React.FC = () => {
                 results={analysisResults} 
                 isLoading={isProcessing && mode === ToolMode.ANALYZE} 
                 onClose={() => setShowAnalysis(false)} 
+                lang={language}
             />
         )}
         
@@ -429,7 +459,7 @@ const App: React.FC = () => {
             {showSystemPrompt && (
                 <div className="absolute bottom-14 left-0 w-full bg-slate-800 border border-slate-600 rounded-xl p-3 shadow-xl mb-2 animate-fade-in-up">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">System Instruction (Style Guide)</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t(language, 'sysInstructionTitle')}</span>
                         <button onClick={() => setShowSystemPrompt(false)} className="text-slate-400 hover:text-white">
                             <i className="fa-solid fa-xmark"></i>
                         </button>
@@ -437,7 +467,7 @@ const App: React.FC = () => {
                     <textarea 
                         value={systemInstruction}
                         onChange={(e) => setSystemInstruction(e.target.value)}
-                        placeholder="e.g., 'Use a watercolor style', 'Keep it photorealistic', 'Cyberpunk neon aesthetics'..."
+                        placeholder={t(language, 'sysInstructionPlaceholder')}
                         className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-sm text-white placeholder-slate-500 focus:border-blue-500 outline-none resize-none h-20"
                     />
                 </div>
@@ -447,7 +477,7 @@ const App: React.FC = () => {
             {showModelSelector && (
                  <div className="absolute bottom-14 left-10 w-56 bg-slate-800 border border-slate-600 rounded-xl p-2 shadow-xl mb-2 z-30">
                     <div className="flex justify-between items-center mb-2 px-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Model</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t(language, 'modelSelectTitle')}</span>
                         <button onClick={() => setShowModelSelector(false)} className="text-slate-400 hover:text-white">
                             <i className="fa-solid fa-xmark"></i>
                         </button>
@@ -488,7 +518,7 @@ const App: React.FC = () => {
             {showRefSelector && (
                 <div className="absolute bottom-14 left-10 w-64 bg-slate-800 border border-slate-600 rounded-xl p-2 shadow-xl mb-2 z-30">
                     <div className="flex justify-between items-center mb-2 px-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Style Reference</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t(language, 'refLayerTitle')}</span>
                         <button onClick={() => setShowRefSelector(false)} className="text-slate-400 hover:text-white">
                             <i className="fa-solid fa-xmark"></i>
                         </button>
@@ -510,7 +540,7 @@ const App: React.FC = () => {
                             </button>
                         ))}
                         {layers.filter(l => l.id !== activeLayerId).length === 0 && (
-                            <div className="text-xs text-slate-500 text-center py-2">No other layers available.</div>
+                            <div className="text-xs text-slate-500 text-center py-2">{t(language, 'noRefLayers')}</div>
                         )}
                     </div>
                 </div>
@@ -532,7 +562,7 @@ const App: React.FC = () => {
                                 setShowRefSelector(false);
                             }}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${selectedModel.includes('pro') ? 'bg-purple-900/50 text-purple-400 border border-purple-500/50' : 'hover:bg-slate-800 text-slate-400'}`}
-                            title="Select Model"
+                            title={t(language, 'modelSelectTitle')}
                         >
                             <span className="text-[10px] font-bold">{selectedModel === 'gemini-2.5-flash-image' ? '2.5' : '3.0'}</span>
                         </button>
@@ -545,7 +575,7 @@ const App: React.FC = () => {
                                 setShowModelSelector(false);
                             }}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${systemInstruction.trim() ? 'bg-blue-900/50 text-blue-400 border border-blue-500/50' : 'hover:bg-slate-800 text-slate-400'}`}
-                            title="Set System Instructions"
+                            title={t(language, 'sysInstructionTitle')}
                         >
                             <i className="fa-solid fa-sliders"></i>
                         </button>
@@ -558,7 +588,7 @@ const App: React.FC = () => {
                                 setShowModelSelector(false);
                             }}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${referenceLayerId ? 'bg-indigo-900/50 text-indigo-400 border border-indigo-500/50' : 'hover:bg-slate-800 text-slate-400'}`}
-                            title="Add Reference Layer"
+                            title={t(language, 'refLayerTitle')}
                         >
                             <i className="fa-solid fa-images"></i>
                         </button>
@@ -583,10 +613,10 @@ const App: React.FC = () => {
                     onKeyDown={(e) => e.key === 'Enter' && handleGeminiAction()}
                     placeholder={
                         selection 
-                            ? "Describe how to edit the SELECTED region..." 
+                            ? t(language, 'promptPlaceholderSelection') 
                             : mode === ToolMode.EDIT || mode === ToolMode.SELECT 
-                                ? (referenceLayerId ? "Describe how to merge/style these images..." : "Describe how to edit this layer...") 
-                                : "Ask Gemini about this image..."
+                                ? (referenceLayerId ? t(language, 'promptPlaceholderRef') : t(language, 'promptPlaceholderLayer'))
+                                : t(language, 'promptPlaceholderDefault')
                     }
                     className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-slate-400 h-9 min-w-[100px]"
                     disabled={isProcessing || !activeLayerId}
@@ -603,18 +633,86 @@ const App: React.FC = () => {
                                 : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/20')
                         }`}
                 >
-                    {isProcessing ? <i className="fa-solid fa-spinner fa-spin"></i> : 'Generate'}
+                    {isProcessing ? <i className="fa-solid fa-spinner fa-spin"></i> : t(language, 'generate')}
                 </button>
             </div>
              {!activeLayerId && layers.length === 0 && (
                 <div className="text-center mt-2 text-xs text-slate-500 font-medium">
-                    Import a file to start editing
+                    {t(language, 'workspacePlaceholder')}
                 </div>
             )}
         </div>
 
       </div>
       
+      {/* Settings Modal */}
+      {showSettings && (
+          <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+              <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+                  <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+                      <h2 className="font-bold text-white flex items-center gap-2">
+                          <i className="fa-solid fa-gear text-slate-400"></i> {t(language, 'settings')}
+                      </h2>
+                      <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-white">
+                          <i className="fa-solid fa-xmark"></i>
+                      </button>
+                  </div>
+                  
+                  <div className="p-6 space-y-6">
+                      {/* Language Selection */}
+                      <div>
+                          <label className="block text-xs font-bold text-slate-400 uppercase mb-2">{t(language, 'language')}</label>
+                          <div className="flex gap-2">
+                              <button 
+                                  onClick={() => setLanguage('en')}
+                                  className={`flex-1 py-2 rounded-md text-sm border ${language === 'en' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
+                              >
+                                  English
+                              </button>
+                              <button 
+                                  onClick={() => setLanguage('zh')}
+                                  className={`flex-1 py-2 rounded-md text-sm border ${language === 'zh' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
+                              >
+                                  中文
+                              </button>
+                          </div>
+                      </div>
+
+                      {/* API Key Input */}
+                      <div>
+                          <label className="block text-xs font-bold text-slate-400 uppercase mb-2">{t(language, 'apiKey')}</label>
+                          <input 
+                              type="password" 
+                              value={apiKey}
+                              onChange={(e) => setApiKey(e.target.value)}
+                              placeholder={t(language, 'apiKeyPlaceholder')}
+                              className="w-full bg-slate-800 border border-slate-700 rounded-md p-2.5 text-sm text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                          />
+                          <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                             <i className="fa-solid fa-circle-info mr-1"></i>
+                             {t(language, 'apiKeyHelp')}
+                          </p>
+                      </div>
+                  </div>
+
+                  <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3">
+                      <button 
+                          onClick={() => setShowSettings(false)}
+                          className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+                      >
+                          {t(language, 'cancel')}
+                      </button>
+                      <button 
+                          onClick={() => saveSettings(apiKey, language)}
+                          className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
+                      >
+                          {t(language, 'save')}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Loading Overlay */}
       {isProcessing && (mode === ToolMode.EDIT || mode === ToolMode.SELECT) && (
         <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
@@ -625,7 +723,7 @@ const App: React.FC = () => {
                 </div>
             </div>
             <p className={`mt-4 font-medium tracking-wide ${selectedModel.includes('pro') ? 'text-purple-200' : 'text-blue-200'}`}>
-                {referenceLayerId ? 'Merging style from reference...' : (selection ? 'Gemini is editing the selection...' : `Editing with ${selectedModel === 'gemini-3-pro-image-preview' ? 'Gemini 3 Pro' : 'Nano Banana'}...`)}
+                {referenceLayerId ? t(language, 'loadingRef') : (selection ? t(language, 'loadingSelection') : `${t(language, 'loadingEdit')} ${selectedModel === 'gemini-3-pro-image-preview' ? 'Gemini 3 Pro' : 'Nano Banana'}...`)}
             </p>
         </div>
       )}

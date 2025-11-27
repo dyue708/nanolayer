@@ -1,5 +1,7 @@
+
 import React from 'react';
-import { Layer } from '../types';
+import { Layer, Language } from '../types';
+import { t } from '../utils/i18n';
 
 interface LayerManagerProps {
   layers: Layer[];
@@ -9,6 +11,7 @@ interface LayerManagerProps {
   onOpacityChange: (id: string, opacity: number) => void;
   onDeleteLayer: (id: string) => void;
   onAddLayer: () => void;
+  lang: Language;
 }
 
 const LayerManager: React.FC<LayerManagerProps> = ({
@@ -18,7 +21,8 @@ const LayerManager: React.FC<LayerManagerProps> = ({
   onToggleVisibility,
   onOpacityChange,
   onDeleteLayer,
-  onAddLayer
+  onAddLayer,
+  lang
 }) => {
   // Render layers in reverse order for the list (Top layer at top of list)
   const displayLayers = [...layers].reverse();
@@ -26,13 +30,13 @@ const LayerManager: React.FC<LayerManagerProps> = ({
   return (
     <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700 w-64 shrink-0">
       <div className="p-4 border-b border-slate-700 flex justify-between items-center">
-        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Layers</h3>
+        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">{t(lang, 'layers')}</h3>
         <button 
             onClick={onAddLayer}
             className="text-slate-400 hover:text-white hover:bg-slate-700 px-2 py-1 rounded transition-colors text-xs flex items-center gap-1"
-            title="Import Image as New Layer"
+            title={t(lang, 'importImage')}
         >
-            <i className="fa-solid fa-plus"></i> Add
+            <i className="fa-solid fa-plus"></i> {t(lang, 'add')}
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -61,9 +65,6 @@ const LayerManager: React.FC<LayerManagerProps> = ({
             {/* Thumbnail Preview */}
             <div className="w-10 h-10 ml-2 bg-slate-700 rounded border border-slate-600 overflow-hidden relative shrink-0">
                 <div className="absolute inset-0 checkerboard-bg opacity-50"></div>
-                 {/* We need to convert canvas to data URL for img src, but doing it in render is expensive. 
-                     Ideally we store a thumbnail URL in the layer state, but for now we rely on the browser caching or basic rendering.
-                     Using a ref to canvas or a simple effect might be better, but direct DataURL here for MVP simplicity. */}
                 <img 
                     src={layer.canvas.toDataURL()} 
                     alt="thumb" 
@@ -104,8 +105,8 @@ const LayerManager: React.FC<LayerManagerProps> = ({
         {layers.length === 0 && (
             <div className="text-center mt-10 text-slate-500 text-sm px-4">
                 <i className="fa-regular fa-image text-2xl mb-2 opacity-30"></i>
-                <p>No layers.</p>
-                <button onClick={onAddLayer} className="mt-2 text-blue-400 hover:text-blue-300 text-xs">Import Image</button>
+                <p>{t(lang, 'noLayers')}</p>
+                <button onClick={onAddLayer} className="mt-2 text-blue-400 hover:text-blue-300 text-xs">{t(lang, 'importImage')}</button>
             </div>
         )}
       </div>

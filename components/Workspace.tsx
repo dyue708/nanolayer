@@ -1,5 +1,7 @@
+
 import React, { useEffect, useRef, useState } from 'react';
-import { Layer, SelectionRect, ToolMode } from '../types';
+import { Layer, SelectionRect, ToolMode, Language } from '../types';
+import { t } from '../utils/i18n';
 
 interface WorkspaceProps {
   width: number;
@@ -8,9 +10,10 @@ interface WorkspaceProps {
   mode: ToolMode;
   selection: SelectionRect | null;
   onSelectionChange: (rect: SelectionRect | null) => void;
+  lang: Language;
 }
 
-const Workspace: React.FC<WorkspaceProps> = ({ width, height, layers, mode, selection, onSelectionChange }) => {
+const Workspace: React.FC<WorkspaceProps> = ({ width, height, layers, mode, selection, onSelectionChange, lang }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -100,7 +103,7 @@ const Workspace: React.FC<WorkspaceProps> = ({ width, height, layers, mode, sele
           <div className="flex-1 flex items-center justify-center bg-slate-950 text-slate-500">
               <div className="text-center">
                   <i className="fa-solid fa-image text-4xl mb-4 opacity-50"></i>
-                  <p>Import a PSD or Image to start</p>
+                  <p>{t(lang, 'workspacePlaceholder')}</p>
               </div>
           </div>
       )
@@ -153,7 +156,7 @@ const Workspace: React.FC<WorkspaceProps> = ({ width, height, layers, mode, sele
        
        <div className="absolute bottom-4 left-4 bg-slate-900/80 px-3 py-1 rounded text-xs text-slate-400 backdrop-blur-sm">
            {width} x {height}px | {Math.round(scale * 100)}% 
-           {mode === ToolMode.SELECT && <span className="text-emerald-400 ml-2 font-semibold">SELECTION MODE</span>}
+           {mode === ToolMode.SELECT && <span className="text-emerald-400 ml-2 font-semibold">{t(lang, 'selectionMode')}</span>}
        </div>
     </div>
   );
