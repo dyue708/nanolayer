@@ -395,16 +395,30 @@ const App: React.FC = () => {
       exportCanvas.height = canvasDims.height;
       const ctx = exportCanvas.getContext('2d');
       if (!ctx) return;
+      
+      // Draw all layers flattened
       layers.forEach(layer => {
           if (layer.visible) {
             ctx.globalAlpha = layer.opacity;
             ctx.drawImage(layer.canvas, layer.x, layer.y);
           }
       });
-      const link = document.createElement('a');
-      link.download = 'nanolayer_export.png';
-      link.href = exportCanvas.toDataURL('image/png');
-      link.click();
+
+      // Use Blob export which handles large files and proper headers better than DataURL
+      exportCanvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `nanolayer_${Date.now()}.png`;
+            link.href = url;
+            document.body.appendChild(link); // Required for Firefox
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          } else {
+             alert("Failed to create PNG file.");
+          }
+      }, 'image/png');
   };
 
   const handleExportPsd = () => {
