@@ -1,3 +1,4 @@
+
 import { Layer } from '../types';
 import { readPsd, writePsd, Psd } from 'ag-psd'; // Assuming ag-psd is installed in the environment
 
@@ -24,15 +25,17 @@ export const parsePsdFile = async (file: File): Promise<{ width: number; height:
                 // It's a raster layer
                 const layerCanvas = layer.canvas as HTMLCanvasElement;
                 
-                // Create a full-size canvas for this layer to simplify compositing
-                // In a real app, you'd want to keep original bounds to save memory, 
-                // but for this editor, full-size layers are easier to manage with Gemini.
-                const fullCanvas = document.createElement('canvas');
-                fullCanvas.width = canvasWidth;
-                fullCanvas.height = canvasHeight;
-                const ctx = fullCanvas.getContext('2d');
+                // Keep layer canvas at its original size, do not expand to full workspace
+                const layerX = (layer.left || 0) + parentX;
+                const layerY = (layer.top || 0) + parentY;
+
+                // Clone canvas to ensure we have a clean element
+                const finalCanvas = document.createElement('canvas');
+                finalCanvas.width = layerCanvas.width;
+                finalCanvas.height = layerCanvas.height;
+                const ctx = finalCanvas.getContext('2d');
                 if (ctx) {
-                    ctx.drawImage(layerCanvas, layer.left || 0, layer.top || 0);
+                    ctx.drawImage(layerCanvas, 0, 0);
                 }
 
                 layers.push({
@@ -40,12 +43,14 @@ export const parsePsdFile = async (file: File): Promise<{ width: number; height:
                     name: layer.name || `Layer ${index + 1}`,
                     visible: !layer.hidden,
                     opacity: layer.opacity != null ? layer.opacity : 1,
-                    canvas: fullCanvas,
-                    zIndex: index
+                    canvas: finalCanvas,
+                    zIndex: index,
+                    x: layerX,
+                    y: layerY
                 });
             } else if (layer.children) {
                 // Recursively process groups (flattening for this simplified demo)
-                processLayers(layer.children, (layer.left || 0), (layer.top || 0));
+                processLayers(layer.children, (layer.left || 0) + parentX, (layer.top || 0) + parentY);
             }
         });
     }
@@ -66,7 +71,9 @@ export const parsePsdFile = async (file: File): Promise<{ width: number; height:
             visible: true,
             opacity: 1,
             canvas: fullCanvas,
-            zIndex: 0
+            zIndex: 0,
+            x: 0,
+            y: 0
          });
     }
 
@@ -99,7 +106,9 @@ export const parseImageFile = async (file: File): Promise<{ width: number; heigh
                     visible: true,
                     opacity: 1,
                     canvas: canvas,
-                    zIndex: 0
+                    zIndex: 0,
+                    x: 0,
+                    y: 0
                 }]
             });
         };
@@ -119,8 +128,8 @@ export const exportToPsd = (layers: Layer[], width: number, height: number) => {
         opacity: layer.opacity,
         // ag-psd can read directly from canvas element
         canvas: layer.canvas,
-        left: 0,
-        top: 0
+        left: layer.x,
+        top: layer.y
     }));
 
     const psd: Psd = {

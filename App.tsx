@@ -83,30 +83,11 @@ const App: React.FC = () => {
     }
   };
 
-  // Reusable function to add an image file as a layer (used by Upload and Paste)
+  // Reusable function to add an image file as a layer
   const addLayerFromFile = useCallback(async (file: File) => {
-      // If project is empty, initialize it with this image
-      if (canvasDims.width === 0 || canvasDims.height === 0) {
-          try {
-              setIsProcessing(true);
-              const data = await parseImageFile(file);
-              setCanvasDims({ width: data.width, height: data.height });
-              setLayers(data.layers);
-              if (data.layers.length > 0) setActiveLayerId(data.layers[0].id);
-              setSelection(null);
-          } catch (err) {
-              alert("Error loading file: " + (err instanceof Error ? err.message : String(err)));
-          } finally {
-              setIsProcessing(false);
-          }
-          return;
-      }
-
-      // Existing project: Add as new layer
       try {
           setIsProcessing(true);
           
-          // Load image
           const img = new Image();
           const url = URL.createObjectURL(file);
           img.src = url;
@@ -115,39 +96,41 @@ const App: React.FC = () => {
               img.onerror = reject;
           });
 
-          // Create new canvas with project dimensions
+          // Dynamic Canvas Resizing: Expand if new image is larger
+          const newWidth = Math.max(canvasDims.width, img.width);
+          const newHeight = Math.max(canvasDims.height, img.height);
+          
+          if (newWidth > canvasDims.width || newHeight > canvasDims.height) {
+              setCanvasDims({ width: newWidth, height: newHeight });
+          }
+
+          // Create canvas at native image size
           const canvas = document.createElement('canvas');
-          canvas.width = canvasDims.width;
-          canvas.height = canvasDims.height;
+          canvas.width = img.width;
+          canvas.height = img.height;
           const ctx = canvas.getContext('2d');
-
           if (ctx) {
-             const scale = Math.min(
-                 canvasDims.width / img.width, 
-                 canvasDims.height / img.height
-             );
-             // Maintain original size if smaller, scale down if larger
-             const finalScale = scale > 1 ? 1 : scale;
-             
-             const w = img.width * finalScale;
-             const h = img.height * finalScale;
-             const x = (canvasDims.width - w) / 2;
-             const y = (canvasDims.height - h) / 2;
-
-             ctx.drawImage(img, x, y, w, h);
+             ctx.drawImage(img, 0, 0);
           }
           
+          // Center the new layer on the canvas
+          const x = (newWidth - img.width) / 2;
+          const y = (newHeight - img.height) / 2;
+
           const newLayer: Layer = {
               id: `layer-${Date.now()}`,
-              name: file.name || "Pasted Image",
+              name: file.name || "Image Layer",
               visible: true,
               opacity: 1,
               canvas: canvas,
-              zIndex: layers.length
+              zIndex: layers.length,
+              x: x,
+              y: y
           };
 
           setLayers(prev => [...prev, newLayer]);
           setActiveLayerId(newLayer.id);
+          setSelection(null);
           URL.revokeObjectURL(url);
 
       } catch (err) {
@@ -176,7 +159,7 @@ const App: React.FC = () => {
             if (file) {
               e.preventDefault();
               addLayerFromFile(file);
-              break; // Only paste the first image found
+              break; 
             }
           }
         }
@@ -193,6 +176,10 @@ const App: React.FC = () => {
           setReferenceLayerId(null);
       }
   };
+  
+  const handleLayerMove = (id: string, x: number, y: number) => {
+      setLayers(prev => prev.map(l => l.id === id ? { ...l, x, y } : l));
+  };
 
   const handleToggleVisibility = (id: string) => {
     setLayers(prev => prev.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
@@ -206,7 +193,36 @@ const App: React.FC = () => {
       setLayers(prev => prev.filter(l => l.id !== id));
       if (activeLayerId === id) setActiveLayerId(null);
       if (referenceLayerId === id) setReferenceLayerId(null);
-  }
+  };
+
+  const handleMoveLayerUp = (id: string) => {
+    setLayers(prev => {
+        const index = prev.findIndex(l => l.id === id);
+        // If it's already at the top (end of array), can't move up
+        if (index === -1 || index === prev.length - 1) return prev;
+        
+        const newLayers = [...prev];
+        // Swap with the next layer
+        [newLayers[index], newLayers[index + 1]] = [newLayers[index + 1], newLayers[index]];
+        
+        // Re-assign z-indices cleanly (though rendering order depends on array position)
+        return newLayers.map((l, i) => ({...l, zIndex: i}));
+    });
+  };
+
+  const handleMoveLayerDown = (id: string) => {
+    setLayers(prev => {
+        const index = prev.findIndex(l => l.id === id);
+        // If it's already at the bottom (start of array), can't move down
+        if (index === -1 || index === 0) return prev;
+        
+        const newLayers = [...prev];
+        // Swap with the previous layer
+        [newLayers[index], newLayers[index - 1]] = [newLayers[index - 1], newLayers[index]];
+        
+        return newLayers.map((l, i) => ({...l, zIndex: i}));
+    });
+  };
 
   const handleGeminiAction = async () => {
     if (!activeLayerId || !prompt.trim()) return;
@@ -224,18 +240,26 @@ const App: React.FC = () => {
     
     try {
       let base64Img: string;
-      let targetX = 0;
-      let targetY = 0;
-      let targetW = canvasDims.width;
-      let targetH = canvasDims.height;
+      // Coordinates on the main workspace where the result will be placed
+      let placeX = activeLayer.x; 
+      let placeY = activeLayer.y; 
+      
+      // Target Dimensions for result
+      let targetW = activeLayer.canvas.width;
+      let targetH = activeLayer.canvas.height;
 
       // Prepare Image Source: Selection Crop vs Full Image
       if (selection && selection.width > 5 && selection.height > 5) {
           // Crop Mode
-          targetX = selection.x;
-          targetY = selection.y;
+          // Calculate selection relative to layer
+          const relativeX = selection.x - activeLayer.x;
+          const relativeY = selection.y - activeLayer.y;
+          
           targetW = selection.width;
           targetH = selection.height;
+          
+          placeX = selection.x;
+          placeY = selection.y;
 
           const cropCanvas = document.createElement('canvas');
           cropCanvas.width = targetW;
@@ -243,19 +267,21 @@ const App: React.FC = () => {
           const ctx = cropCanvas.getContext('2d');
           
           if (ctx) {
+              // We must draw from the source layer canvas, using relative coords
+              // If relative coords are outside layer bounds, it draws transparent (which is correct)
              ctx.drawImage(
                  activeLayer.canvas, 
-                 targetX, targetY, targetW, targetH, // Source
-                 0, 0, targetW, targetH // Destination
+                 relativeX, relativeY, targetW, targetH, // Source on Layer
+                 0, 0, targetW, targetH // Dest on CropCanvas
              );
           }
           base64Img = canvasToBase64(cropCanvas);
       } else {
-          // Full Image Mode
+          // Full Image Mode - send the layer as is
           base64Img = canvasToBase64(activeLayer.canvas);
       }
 
-      if (mode === ToolMode.EDIT || mode === ToolMode.SELECT) {
+      if (mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE) {
           // Prepare Reference Image if selected
           let referenceBase64: string | undefined = undefined;
           if (referenceLayerId) {
@@ -275,25 +301,18 @@ const App: React.FC = () => {
               referenceBase64
           );
           
-          // Determine where to draw result
+          // Create result canvas
           const resultCanvas = await base64ToCanvas(newImageBase64, targetW, targetH);
-          
-          const finalLayerCanvas = document.createElement('canvas');
-          finalLayerCanvas.width = canvasDims.width;
-          finalLayerCanvas.height = canvasDims.height;
-          const ctx = finalLayerCanvas.getContext('2d');
-          
-          if (ctx) {
-              ctx.drawImage(resultCanvas, targetX, targetY, targetW, targetH);
-          }
           
           const newLayer: Layer = {
               id: `layer-${Date.now()}`,
               name: `Edit: ${prompt.substring(0, 15)}...`,
               visible: true,
               opacity: 1,
-              canvas: finalLayerCanvas,
-              zIndex: layers.length
+              canvas: resultCanvas,
+              zIndex: layers.length,
+              x: placeX,
+              y: placeY
           };
           
           setLayers(prev => [...prev, newLayer]);
@@ -301,10 +320,10 @@ const App: React.FC = () => {
           setPrompt('');
           // Clear selection after successful edit
           if (selection) setSelection(null); 
+          // Reset mode if needed, or stay in current
           if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
 
       } else if (mode === ToolMode.ANALYZE) {
-          // Gemini 3 Pro Analysis with dynamic apiKey
           setShowAnalysis(true);
           const text = await analyzeImageWithGemini(apiKey, base64Img, prompt);
           setAnalysisResults(prev => [{ text, timestamp: Date.now() }, ...prev]);
@@ -330,7 +349,7 @@ const App: React.FC = () => {
       layers.forEach(layer => {
           if (layer.visible) {
             ctx.globalAlpha = layer.opacity;
-            ctx.drawImage(layer.canvas, 0, 0);
+            ctx.drawImage(layer.canvas, layer.x, layer.y);
           }
       });
 
@@ -367,7 +386,6 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-             {/* File Input for Open Project */}
              <input 
                 type="file" 
                 ref={fileInputRef}
@@ -376,7 +394,6 @@ const App: React.FC = () => {
                 className="hidden" 
              />
              
-             {/* File Input for Add Layer */}
              <input 
                 type="file" 
                 ref={addLayerInputRef}
@@ -429,6 +446,19 @@ const App: React.FC = () => {
         <div className="flex flex-col z-10">
             {/* Mode Switcher Sidebar */}
             <div className="w-14 bg-slate-900 border-r border-slate-700 flex flex-col items-center py-4 gap-4 h-full hidden md:flex">
+                 
+                 <button 
+                    onClick={() => setMode(ToolMode.MOVE)}
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${
+                        mode === ToolMode.MOVE ? 'bg-blue-600 text-white shadow-blue-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
+                    }`}
+                    title={t(language, 'toolMove')}
+                 >
+                    <i className="fa-solid fa-arrows-up-down-left-right"></i>
+                 </button>
+
+                 <div className="w-8 h-px bg-slate-700 my-1"></div>
+
                  <button 
                     onClick={() => setMode(ToolMode.EDIT)}
                     className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${
@@ -475,6 +505,8 @@ const App: React.FC = () => {
             onOpacityChange={handleOpacityChange}
             onDeleteLayer={handleDeleteLayer}
             onAddLayer={() => addLayerInputRef.current?.click()}
+            onMoveLayerUp={handleMoveLayerUp}
+            onMoveLayerDown={handleMoveLayerDown}
             lang={language}
         />
 
@@ -483,9 +515,11 @@ const App: React.FC = () => {
             width={canvasDims.width} 
             height={canvasDims.height} 
             layers={layers} 
+            activeLayerId={activeLayerId}
             mode={mode}
             selection={selection}
             onSelectionChange={setSelection}
+            onLayerMove={handleLayerMove}
             lang={language}
         />
 
@@ -593,12 +627,12 @@ const App: React.FC = () => {
             )}
 
             <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700 p-2 rounded-2xl shadow-2xl shadow-black/50 flex items-center gap-2 relative">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${mode === ToolMode.EDIT || mode === ToolMode.SELECT ? 'bg-blue-600' : 'bg-purple-600'}`}>
-                    <i className={`fa-solid ${mode === ToolMode.EDIT || mode === ToolMode.SELECT ? 'fa-wand-magic-sparkles' : 'fa-magnifying-glass'} text-white text-xs`}></i>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'bg-blue-600' : 'bg-purple-600'}`}>
+                    <i className={`fa-solid ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'fa-wand-magic-sparkles' : 'fa-magnifying-glass'} text-white text-xs`}></i>
                 </div>
                 
                 {/* Tools Group */}
-                {(mode === ToolMode.EDIT || mode === ToolMode.SELECT) && (
+                {(mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE) && (
                     <div className="flex items-center gap-1 border-r border-slate-700 pr-2 mr-1">
                          {/* Model Toggle */}
                          <button 
@@ -660,7 +694,7 @@ const App: React.FC = () => {
                     placeholder={
                         selection 
                             ? t(language, 'promptPlaceholderSelection') 
-                            : mode === ToolMode.EDIT || mode === ToolMode.SELECT 
+                            : mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE
                                 ? (referenceLayerId ? t(language, 'promptPlaceholderRef') : t(language, 'promptPlaceholderLayer'))
                                 : t(language, 'promptPlaceholderDefault')
                     }
@@ -674,7 +708,7 @@ const App: React.FC = () => {
                     className={`h-9 px-4 rounded-xl text-xs font-bold uppercase tracking-wide transition-all
                         ${isProcessing || !prompt.trim() || !activeLayerId 
                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                            : (mode === ToolMode.EDIT || mode === ToolMode.SELECT
+                            : (mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE
                                 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20' 
                                 : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/20')
                         }`}
@@ -760,7 +794,7 @@ const App: React.FC = () => {
       )}
 
       {/* Loading Overlay */}
-      {isProcessing && (mode === ToolMode.EDIT || mode === ToolMode.SELECT) && (
+      {isProcessing && (mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE) && (
         <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
             <div className="relative">
                 <div className={`w-16 h-16 border-4 border-t-transparent rounded-full animate-spin ${selectedModel.includes('pro') ? 'border-purple-500/30 border-t-purple-500' : 'border-blue-500/30 border-t-blue-500'}`}></div>

@@ -20,6 +20,7 @@ export const translations = {
     toolEdit: "Generative Edit",
     toolSelect: "Select Region",
     toolAnalyze: "Analyze",
+    toolMove: "Move Layer",
     sysInstructionTitle: "System Instruction (Style Guide)",
     sysInstructionPlaceholder: "e.g., 'Use a watercolor style', 'Keep it photorealistic'...",
     modelSelectTitle: "Select Model",
@@ -42,6 +43,8 @@ export const translations = {
     loadingRef: "Merging style from reference...",
     loadingSelection: "Gemini is editing the selection...",
     apiKeyRequired: "API Key is required. Please configure it in Settings.",
+    moveUp: "Move Layer Up",
+    moveDown: "Move Layer Down",
   },
   zh: {
     appTitle: "NanoLayer",
@@ -61,6 +64,7 @@ export const translations = {
     toolEdit: "生成式编辑",
     toolSelect: "区域选择",
     toolAnalyze: "分析",
+    toolMove: "移动图层",
     sysInstructionTitle: "系统提示词 (风格指南)",
     sysInstructionPlaceholder: "例如：'使用水彩风格'，'保持照片写实'...",
     modelSelectTitle: "选择模型",
@@ -83,6 +87,8 @@ export const translations = {
     loadingRef: "正在融合参考图风格...",
     loadingSelection: "Gemini 正在编辑选区...",
     apiKeyRequired: "需要配置 API Key。请在设置中输入。",
+    moveUp: "上移图层",
+    moveDown: "下移图层",
   }
 };
 
