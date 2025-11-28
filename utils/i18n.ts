@@ -50,6 +50,8 @@ export const translations = {
     moveDown: "Move Layer Down",
     logout: "Exit / Clear Key",
     confirmLogout: "Are you sure you want to remove your API Key and reset? You will need to enter it again next time.",
+    totalCost: "Total Cost",
+    estimatedCost: "Est. Cost",
     
     // Config Panel
     templates: "Quick Templates",
@@ -111,6 +113,8 @@ export const translations = {
     moveDown: "下移图层",
     logout: "退出 / 清除 Key",
     confirmLogout: "确定要移除保存的 API Key 并重置吗？下次访问需要重新输入。",
+    totalCost: "总计费用",
+    estimatedCost: "预估费用",
     
     // Config Panel
     templates: "快速模板",

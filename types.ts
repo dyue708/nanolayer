@@ -8,6 +8,7 @@ export interface Layer {
   zIndex: number;
   x: number;
   y: number;
+  cost?: number;
 }
 
 export enum ToolMode {

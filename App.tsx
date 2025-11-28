@@ -243,6 +243,15 @@ const App: React.FC = () => {
       setSystemInstruction(text);
   };
 
+  const calculateCost = (model: string, resolution?: string) => {
+      if (model.includes('pro')) {
+          // Estimate: Pro is more expensive, higher res is more expensive
+          return resolution === '2K' || resolution === '4K' ? 0.08 : 0.04;
+      }
+      // Estimate: Flash is cheaper
+      return 0.01;
+  };
+
   const handleGeminiAction = async () => {
     if (!prompt.trim()) return;
 
@@ -352,6 +361,8 @@ const App: React.FC = () => {
              resultCanvas = await base64ToCanvas(newImageBase64, targetW, targetH);
           }
           
+          const genCost = calculateCost(selectedModel, resolution);
+
           const newLayer: Layer = {
               id: `layer-${Date.now()}`,
               name: activeLayer ? `Edit: ${prompt.substring(0, 15)}...` : `Gen: ${prompt.substring(0, 15)}...`,
@@ -360,7 +371,8 @@ const App: React.FC = () => {
               canvas: resultCanvas,
               zIndex: layers.length,
               x: placeX,
-              y: placeY
+              y: placeY,
+              cost: genCost
           };
           
           setLayers(prev => [...prev, newLayer]);
@@ -438,6 +450,9 @@ const App: React.FC = () => {
   // Get current reference layer for thumbnail display
   const currentRefLayer = referenceLayerId ? layers.find(l => l.id === referenceLayerId) : null;
 
+  // Calculate Total Cost
+  const totalCost = layers.reduce((acc, layer) => acc + (layer.cost || 0), 0);
+
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-200 font-sans selection:bg-blue-500 selection:text-white">
       {/* Top Bar */}
@@ -465,6 +480,17 @@ const App: React.FC = () => {
              <button onClick={handleExportPsd} disabled={layers.length === 0} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50">
                 <i className="fa-solid fa-file-export"></i> {t(language, 'exportPsd')}
              </button>
+
+             <div className="h-5 w-px bg-slate-700 mx-1"></div>
+
+             {/* Cost Badge */}
+             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700/50" title={t(language, 'totalCost')}>
+                <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t(language, 'totalCost')}</div>
+                <div className="text-sm font-mono text-emerald-400 flex items-center gap-1">
+                    <i className="fa-solid fa-coins text-[10px] opacity-70"></i>
+                    ${totalCost.toFixed(2)}
+                </div>
+             </div>
 
              <div className="h-5 w-px bg-slate-700 mx-1"></div>
              
