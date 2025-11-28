@@ -41,8 +41,17 @@ const App: React.FC = () => {
   useEffect(() => {
       const storedKey = localStorage.getItem('nano_api_key');
       const storedLang = localStorage.getItem('nano_lang');
-      if (storedKey) setApiKey(storedKey);
-      if (storedLang && (storedLang === 'en' || storedLang === 'zh')) setLanguage(storedLang as Language);
+      
+      if (storedKey) {
+          setApiKey(storedKey);
+      } else {
+          // If no key is found, prompt user to enter one immediately
+          setShowSettings(true);
+      }
+
+      if (storedLang && (storedLang === 'en' || storedLang === 'zh')) {
+          setLanguage(storedLang as Language);
+      }
   }, []);
 
   const saveSettings = (newKey: string, newLang: Language) => {
@@ -768,6 +777,11 @@ const App: React.FC = () => {
                               placeholder={t(language, 'apiKeyPlaceholder')}
                               className="w-full bg-slate-800 border border-slate-700 rounded-md p-2.5 text-sm text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                           />
+                           <div className="mt-2 text-xs text-slate-500">
+                                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1">
+                                    {t(language, 'getKeyLinkText')} <i className="fa-solid fa-up-right-from-square text-[10px]"></i>
+                                </a>
+                           </div>
                           <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
                              <i className="fa-solid fa-circle-info mr-1"></i>
                              {t(language, 'apiKeyHelp')}
