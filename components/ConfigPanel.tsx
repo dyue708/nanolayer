@@ -118,6 +118,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
              
              {/* Templates */}
              <div className="flex flex-wrap gap-1.5 mb-3">
+                <button onClick={() => onApplyTemplate('consistent')} className="text-[10px] bg-indigo-900/40 hover:bg-indigo-800 border border-indigo-500/30 px-2 py-1 rounded text-indigo-200 transition-colors">{t(lang, 'templateConsistent')}</button>
                 <button onClick={() => onApplyTemplate('comic')} className="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-1 rounded text-slate-300 transition-colors">{t(lang, 'templateComic')}</button>
                 <button onClick={() => onApplyTemplate('character')} className="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-1 rounded text-slate-300 transition-colors">{t(lang, 'templateCharacter')}</button>
                 <button onClick={() => onApplyTemplate('cyberpunk')} className="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-1 rounded text-slate-300 transition-colors">{t(lang, 'templateCyberpunk')}</button>

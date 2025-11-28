@@ -238,6 +238,7 @@ const App: React.FC = () => {
           case 'character': text = 'Create a character reference sheet with front, side, and back views.'; break;
           case 'cyberpunk': text = 'Apply a Cyberpunk aesthetic: Neon lights, high contrast, futuristic elements, rain.'; break;
           case 'watercolor': text = 'Apply a soft watercolor painting style with bleeding edges and pastel colors.'; break;
+          case 'consistent': text = 'Maintain the character\'s appearance and original art style. Do not invent new characters. Ensure actions are logical and natural. The image should be bright, detailed, and have a rich background.'; break;
       }
       setSystemInstruction(text);
   };
