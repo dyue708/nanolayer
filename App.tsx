@@ -83,16 +83,26 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddLayerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      // If project is empty, treat as initial import
+  // Reusable function to add an image file as a layer (used by Upload and Paste)
+  const addLayerFromFile = useCallback(async (file: File) => {
+      // If project is empty, initialize it with this image
       if (canvasDims.width === 0 || canvasDims.height === 0) {
-          handleFileUpload(event);
+          try {
+              setIsProcessing(true);
+              const data = await parseImageFile(file);
+              setCanvasDims({ width: data.width, height: data.height });
+              setLayers(data.layers);
+              if (data.layers.length > 0) setActiveLayerId(data.layers[0].id);
+              setSelection(null);
+          } catch (err) {
+              alert("Error loading file: " + (err instanceof Error ? err.message : String(err)));
+          } finally {
+              setIsProcessing(false);
+          }
           return;
       }
 
+      // Existing project: Add as new layer
       try {
           setIsProcessing(true);
           
@@ -116,6 +126,7 @@ const App: React.FC = () => {
                  canvasDims.width / img.width, 
                  canvasDims.height / img.height
              );
+             // Maintain original size if smaller, scale down if larger
              const finalScale = scale > 1 ? 1 : scale;
              
              const w = img.width * finalScale;
@@ -128,7 +139,7 @@ const App: React.FC = () => {
           
           const newLayer: Layer = {
               id: `layer-${Date.now()}`,
-              name: file.name,
+              name: file.name || "Pasted Image",
               visible: true,
               opacity: 1,
               canvas: canvas,
@@ -143,9 +154,38 @@ const App: React.FC = () => {
           alert("Error adding layer: " + (err instanceof Error ? err.message : String(err)));
       } finally {
           setIsProcessing(false);
-          if (addLayerInputRef.current) addLayerInputRef.current.value = '';
       }
+  }, [canvasDims, layers]);
+
+  const handleAddLayerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+          await addLayerFromFile(file);
+      }
+      if (addLayerInputRef.current) addLayerInputRef.current.value = '';
   };
+
+  // Paste Event Listener
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (e.clipboardData && e.clipboardData.items) {
+        for (let i = 0; i < e.clipboardData.items.length; i++) {
+          const item = e.clipboardData.items[i];
+          if (item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            if (file) {
+              e.preventDefault();
+              addLayerFromFile(file);
+              break; // Only paste the first image found
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [addLayerFromFile]);
 
   const handleLayerSelect = (id: string) => {
       setActiveLayerId(id);
