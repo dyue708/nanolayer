@@ -68,21 +68,32 @@ const Workspace: React.FC<WorkspaceProps> = ({
 
   }, [layers, width, height, activeLayerId, mode, scale]);
 
+  // Use ResizeObserver to handle container size changes (e.g. sidebar toggle)
   useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
       const handleResize = () => {
-          if (containerRef.current && width > 0 && height > 0) {
+          if (width > 0 && height > 0) {
               const padding = 40;
-              const availWidth = containerRef.current.clientWidth - padding;
-              const availHeight = containerRef.current.clientHeight - padding;
+              const availWidth = container.clientWidth - padding;
+              const availHeight = container.clientHeight - padding;
               const scaleW = availWidth / width;
               const scaleH = availHeight / height;
-              setScale(Math.min(scaleW, scaleH, 1)); // Max scale 1 to prevent pixelation upscaling for now
+              setScale(Math.min(scaleW, scaleH, 1)); // Max scale 1 to prevent pixelation
           }
       };
-      
-      handleResize();
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
+
+      const resizeObserver = new ResizeObserver(() => {
+          handleResize();
+      });
+
+      resizeObserver.observe(container);
+      handleResize(); // Initial calculation
+
+      return () => {
+          resizeObserver.disconnect();
+      };
   }, [width, height]);
 
   // Mouse Event Handlers
@@ -174,7 +185,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
             transform: `scale(${scale})`,
             boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5)'
         }} 
-        className={`checkerboard-bg relative transition-transform duration-200 ease-out 
+        className={`checkerboard-bg relative transition-transform duration-200 ease-out shrink-0
             ${mode === ToolMode.SELECT ? 'cursor-crosshair' : ''}
             ${mode === ToolMode.MOVE ? 'cursor-move' : ''}
         `}
@@ -207,7 +218,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
          )}
        </div>
        
-       <div className="absolute bottom-4 left-4 bg-slate-900/80 px-3 py-1 rounded text-xs text-slate-400 backdrop-blur-sm">
+       <div className="absolute bottom-4 left-4 bg-slate-900/80 px-3 py-1 rounded text-xs text-slate-400 backdrop-blur-sm pointer-events-none">
            {width} x {height}px | {Math.round(scale * 100)}% 
            {mode === ToolMode.SELECT && <span className="text-emerald-400 ml-2 font-semibold">{t(lang, 'selectionMode')}</span>}
            {mode === ToolMode.MOVE && <span className="text-blue-400 ml-2 font-semibold">{t(lang, 'toolMove')}</span>}
