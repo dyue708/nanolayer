@@ -245,11 +245,11 @@ const App: React.FC = () => {
 
   const calculateCost = (model: string, resolution?: string) => {
       if (model.includes('pro')) {
-          // Estimate: Pro is more expensive, higher res is more expensive
-          return resolution === '2K' || resolution === '4K' ? 0.08 : 0.04;
+          // Gemini 3 Pro Image Preview: Output per image cost
+          return 0.134;
       }
-      // Estimate: Flash is cheaper
-      return 0.01;
+      // Gemini 2.5 Flash Image: Output per image cost
+      return 0.0396;
   };
 
   const handleGeminiAction = async () => {
@@ -380,6 +380,22 @@ const App: React.FC = () => {
           setPrompt('');
           if (selection) setSelection(null); 
           if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
+          
+          // Show Cost Notification
+          const notification = document.createElement('div');
+          notification.className = "fixed bottom-20 right-4 bg-slate-900 border border-emerald-500/50 text-white px-4 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-3 animate-bounce-in";
+          notification.innerHTML = `
+            <div class="bg-emerald-500/20 p-2 rounded-full text-emerald-400"><i class="fa-solid fa-coins"></i></div>
+            <div>
+                <div class="text-xs text-slate-400 font-bold uppercase">${t(language, 'estimatedCost')}</div>
+                <div class="font-mono text-emerald-300 font-bold">$${genCost.toFixed(4)}</div>
+            </div>
+          `;
+          document.body.appendChild(notification);
+          setTimeout(() => {
+              notification.style.opacity = '0';
+              setTimeout(() => document.body.removeChild(notification), 500);
+          }, 4000);
 
       } else if (mode === ToolMode.ANALYZE) {
           if (!base64Img) {
@@ -488,7 +504,7 @@ const App: React.FC = () => {
                 <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t(language, 'totalCost')}</div>
                 <div className="text-sm font-mono text-emerald-400 flex items-center gap-1">
                     <i className="fa-solid fa-coins text-[10px] opacity-70"></i>
-                    ${totalCost.toFixed(2)}
+                    ${totalCost.toFixed(4)}
                 </div>
              </div>
 
