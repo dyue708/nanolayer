@@ -38,3 +38,6 @@ export interface SelectionRect {
 export type ImageGenerationModel = 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview';
 
 export type Language = 'en' | 'zh';
+
+export type AspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+export type ImageResolution = '1K' | '2K' | '4K';

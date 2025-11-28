@@ -9,39 +9,44 @@ const getAiClient = (customKey?: string) => {
 };
 
 /**
- * Edits an image using the specified Gemini model.
+ * Generates content (Edit or Create) using the specified Gemini model.
  * @param apiKey Optional custom API key.
- * @param imageBase64 Base64 encoded string of the image (PNG/JPEG).
- * @param prompt Text instruction for the edit.
+ * @param imageBase64 Optional Base64 encoded string of the image to edit. If null, generates new image.
+ * @param prompt Text instruction.
  * @param model The model to use ('gemini-2.5-flash-image' or 'gemini-3-pro-image-preview').
  * @param systemInstruction Optional system instruction to guide the style/behavior.
  * @param referenceImageBase64 Optional second image to use as context/style reference.
- * @returns Promise resolving to the edited image as a Base64 string.
+ * @param aspectRatio Optional aspect ratio for the output.
+ * @param resolution Optional resolution string (e.g., '1K', '2K') - mostly for Pro model.
+ * @returns Promise resolving to the generated/edited image as a Base64 string.
  */
-export const editImageWithGemini = async (
+export const generateContentWithGemini = async (
   apiKey: string | undefined,
-  imageBase64: string,
+  imageBase64: string | null | undefined,
   prompt: string,
   model: string,
   systemInstruction?: string,
-  referenceImageBase64?: string
+  referenceImageBase64?: string,
+  aspectRatio?: string,
+  resolution?: string
 ): Promise<string> => {
   try {
     const ai = getAiClient(apiKey);
     
-    // Strip header if present to get raw base64
-    const cleanBase64 = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+    const parts: any[] = [];
 
-    const parts: any[] = [
-      {
-        inlineData: {
-          data: cleanBase64,
-          mimeType: 'image/png', // Assuming PNG for internal canvas exports
-        },
-      }
-    ];
+    // 1. If we have an input image, add it (Editing Mode)
+    if (imageBase64) {
+        const cleanBase64 = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+        parts.push({
+            inlineData: {
+                data: cleanBase64,
+                mimeType: 'image/png', // Assuming PNG for internal canvas exports
+            },
+        });
+    }
 
-    // If a reference image is provided, add it to the parts
+    // 2. If a reference image is provided, add it to the parts
     if (referenceImageBase64) {
        const cleanRef = referenceImageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
        parts.push({
@@ -52,21 +57,32 @@ export const editImageWithGemini = async (
        });
     }
 
-    // Add the text prompt
-    parts.push({
-      text: referenceImageBase64 
-        ? `${prompt} (Use the second image as a style reference)` 
-        : prompt,
-    });
+    // 3. Add the text prompt
+    let finalPrompt = prompt;
+    if (referenceImageBase64) {
+        finalPrompt = `${prompt} (Use the provided reference image as a style/content guide)`;
+    }
+    
+    parts.push({ text: finalPrompt });
+
+    const config: any = {};
+    if (systemInstruction) {
+        config.systemInstruction = systemInstruction;
+    }
+    
+    // Add Image Config if ratio or resolution is specified
+    if (aspectRatio || (resolution && model === 'gemini-3-pro-image-preview')) {
+        config.imageConfig = {};
+        if (aspectRatio) config.imageConfig.aspectRatio = aspectRatio;
+        if (resolution && model === 'gemini-3-pro-image-preview') config.imageConfig.imageSize = resolution;
+    }
 
     const response = await ai.models.generateContent({
       model: model, 
       contents: {
         parts: parts,
       },
-      config: systemInstruction ? {
-        systemInstruction: systemInstruction
-      } : undefined
+      config: Object.keys(config).length > 0 ? config : undefined
     });
 
     // Extract image from response
@@ -81,7 +97,7 @@ export const editImageWithGemini = async (
     
     throw new Error("No image data found in response");
   } catch (error) {
-    console.error("Gemini Image Edit Error:", error);
+    console.error("Gemini Generation Error:", error);
     throw error;
   }
 };

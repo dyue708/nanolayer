@@ -171,3 +171,21 @@ export const base64ToCanvas = async (base64: string, width: number, height: numb
         img.src = base64;
     });
 }
+
+/**
+ * Creates a canvas from base64 at its natural size.
+ */
+export const base64ToCanvasNatural = async (base64: string): Promise<HTMLCanvasElement> => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0); 
+            resolve(canvas);
+        };
+        img.src = base64;
+    });
+}

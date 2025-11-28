@@ -3,9 +3,10 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import LayerManager from './components/LayerManager';
 import Workspace from './components/Workspace';
 import AnalysisPanel from './components/AnalysisPanel';
-import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, Language } from './types';
-import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, exportToPsd } from './utils/psdHelper';
-import { editImageWithGemini, analyzeImageWithGemini } from './services/geminiService';
+import ConfigPanel from './components/ConfigPanel';
+import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, Language, AspectRatio, ImageResolution } from './types';
+import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd } from './utils/psdHelper';
+import { generateContentWithGemini, analyzeImageWithGemini } from './services/geminiService';
 import { t } from './utils/i18n';
 
 const App: React.FC = () => {
@@ -18,16 +19,15 @@ const App: React.FC = () => {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [prompt, setPrompt] = useState('');
-  const [systemInstruction, setSystemInstruction] = useState('');
-  const [showSystemPrompt, setShowSystemPrompt] = useState(false);
   
-  // Model Selection State
+  // Settings / Config Panel State
+  const [showConfigPanel, setShowConfigPanel] = useState(true);
+  const [systemInstruction, setSystemInstruction] = useState('');
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio | undefined>(undefined);
+  const [resolution, setResolution] = useState<ImageResolution>('1K');
   const [selectedModel, setSelectedModel] = useState<ImageGenerationModel>('gemini-2.5-flash-image');
-  const [showModelSelector, setShowModelSelector] = useState(false);
-
-  // Reference Layer State
   const [referenceLayerId, setReferenceLayerId] = useState<string | null>(null);
-  const [showRefSelector, setShowRefSelector] = useState(false);
+  const [showRefLayerPicker, setShowRefLayerPicker] = useState(false);
 
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [showAnalysis, setShowAnalysis] = useState(false);
@@ -45,7 +45,6 @@ const App: React.FC = () => {
       if (storedKey) {
           setApiKey(storedKey);
       } else {
-          // If no key is found, prompt user to enter one immediately
           setShowSettings(true);
       }
 
@@ -60,6 +59,14 @@ const App: React.FC = () => {
       localStorage.setItem('nano_api_key', newKey);
       localStorage.setItem('nano_lang', newLang);
       setShowSettings(false);
+  };
+  
+  const handleLogout = () => {
+      if (window.confirm(t(language, 'confirmLogout'))) {
+          localStorage.removeItem('nano_api_key');
+          setApiKey('');
+          window.location.reload();
+      }
   };
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,7 +99,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Reusable function to add an image file as a layer
   const addLayerFromFile = useCallback(async (file: File) => {
       try {
           setIsProcessing(true);
@@ -105,7 +111,6 @@ const App: React.FC = () => {
               img.onerror = reject;
           });
 
-          // Dynamic Canvas Resizing: Expand if new image is larger
           const newWidth = Math.max(canvasDims.width, img.width);
           const newHeight = Math.max(canvasDims.height, img.height);
           
@@ -113,7 +118,6 @@ const App: React.FC = () => {
               setCanvasDims({ width: newWidth, height: newHeight });
           }
 
-          // Create canvas at native image size
           const canvas = document.createElement('canvas');
           canvas.width = img.width;
           canvas.height = img.height;
@@ -122,7 +126,6 @@ const App: React.FC = () => {
              ctx.drawImage(img, 0, 0);
           }
           
-          // Center the new layer on the canvas
           const x = (newWidth - img.width) / 2;
           const y = (newHeight - img.height) / 2;
 
@@ -157,7 +160,6 @@ const App: React.FC = () => {
       if (addLayerInputRef.current) addLayerInputRef.current.value = '';
   };
 
-  // Paste Event Listener
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       if (e.clipboardData && e.clipboardData.items) {
@@ -202,19 +204,19 @@ const App: React.FC = () => {
       setLayers(prev => prev.filter(l => l.id !== id));
       if (activeLayerId === id) setActiveLayerId(null);
       if (referenceLayerId === id) setReferenceLayerId(null);
+      
+      // If no layers left, reset dims
+      if (layers.length <= 1) { // 1 because we filter after this
+          setCanvasDims({ width: 0, height: 0 });
+      }
   };
 
   const handleMoveLayerUp = (id: string) => {
     setLayers(prev => {
         const index = prev.findIndex(l => l.id === id);
-        // If it's already at the top (end of array), can't move up
         if (index === -1 || index === prev.length - 1) return prev;
-        
         const newLayers = [...prev];
-        // Swap with the next layer
         [newLayers[index], newLayers[index + 1]] = [newLayers[index + 1], newLayers[index]];
-        
-        // Re-assign z-indices cleanly (though rendering order depends on array position)
         return newLayers.map((l, i) => ({...l, zIndex: i}));
     });
   };
@@ -222,19 +224,26 @@ const App: React.FC = () => {
   const handleMoveLayerDown = (id: string) => {
     setLayers(prev => {
         const index = prev.findIndex(l => l.id === id);
-        // If it's already at the bottom (start of array), can't move down
         if (index === -1 || index === 0) return prev;
-        
         const newLayers = [...prev];
-        // Swap with the previous layer
         [newLayers[index], newLayers[index - 1]] = [newLayers[index - 1], newLayers[index]];
-        
         return newLayers.map((l, i) => ({...l, zIndex: i}));
     });
   };
 
+  const applyTemplate = (templateName: string) => {
+      let text = '';
+      switch (templateName) {
+          case 'comic': text = 'Generate a 4-panel comic strip based on the subject. Ensure consistent character details.'; break;
+          case 'character': text = 'Create a character reference sheet with front, side, and back views.'; break;
+          case 'cyberpunk': text = 'Apply a Cyberpunk aesthetic: Neon lights, high contrast, futuristic elements, rain.'; break;
+          case 'watercolor': text = 'Apply a soft watercolor painting style with bleeding edges and pastel colors.'; break;
+      }
+      setSystemInstruction(text);
+  };
+
   const handleGeminiAction = async () => {
-    if (!activeLayerId || !prompt.trim()) return;
+    if (!prompt.trim()) return;
 
     if (!apiKey) {
         alert(t(language, 'apiKeyRequired'));
@@ -242,56 +251,52 @@ const App: React.FC = () => {
         return;
     }
 
-    const activeLayer = layers.find(l => l.id === activeLayerId);
-    if (!activeLayer) return;
-
     setIsProcessing(true);
     
     try {
-      let base64Img: string;
-      // Coordinates on the main workspace where the result will be placed
-      let placeX = activeLayer.x; 
-      let placeY = activeLayer.y; 
-      
-      // Target Dimensions for result
-      let targetW = activeLayer.canvas.width;
-      let targetH = activeLayer.canvas.height;
+      let base64Img: string | null = null;
+      let placeX = 0;
+      let placeY = 0;
+      let targetW = 0;
+      let targetH = 0;
+      let isCrop = false;
+      const activeLayer = layers.find(l => l.id === activeLayerId);
 
-      // Prepare Image Source: Selection Crop vs Full Image
-      if (selection && selection.width > 5 && selection.height > 5) {
-          // Crop Mode
-          // Calculate selection relative to layer
-          const relativeX = selection.x - activeLayer.x;
-          const relativeY = selection.y - activeLayer.y;
-          
-          targetW = selection.width;
-          targetH = selection.height;
-          
-          placeX = selection.x;
-          placeY = selection.y;
+      // Determine Base Image (if any)
+      if (activeLayer) {
+          placeX = activeLayer.x; 
+          placeY = activeLayer.y; 
+          targetW = activeLayer.canvas.width;
+          targetH = activeLayer.canvas.height;
 
-          const cropCanvas = document.createElement('canvas');
-          cropCanvas.width = targetW;
-          cropCanvas.height = targetH;
-          const ctx = cropCanvas.getContext('2d');
-          
-          if (ctx) {
-              // We must draw from the source layer canvas, using relative coords
-              // If relative coords are outside layer bounds, it draws transparent (which is correct)
-             ctx.drawImage(
-                 activeLayer.canvas, 
-                 relativeX, relativeY, targetW, targetH, // Source on Layer
-                 0, 0, targetW, targetH // Dest on CropCanvas
-             );
+          if (selection && selection.width > 5 && selection.height > 5) {
+              isCrop = true;
+              const relativeX = selection.x - activeLayer.x;
+              const relativeY = selection.y - activeLayer.y;
+              targetW = selection.width;
+              targetH = selection.height;
+              placeX = selection.x;
+              placeY = selection.y;
+
+              const cropCanvas = document.createElement('canvas');
+              cropCanvas.width = targetW;
+              cropCanvas.height = targetH;
+              const ctx = cropCanvas.getContext('2d');
+              
+              if (ctx) {
+                 ctx.drawImage(
+                     activeLayer.canvas, 
+                     relativeX, relativeY, targetW, targetH, 
+                     0, 0, targetW, targetH 
+                 );
+              }
+              base64Img = canvasToBase64(cropCanvas);
+          } else {
+              base64Img = canvasToBase64(activeLayer.canvas);
           }
-          base64Img = canvasToBase64(cropCanvas);
-      } else {
-          // Full Image Mode - send the layer as is
-          base64Img = canvasToBase64(activeLayer.canvas);
       }
 
       if (mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE) {
-          // Prepare Reference Image if selected
           let referenceBase64: string | undefined = undefined;
           if (referenceLayerId) {
               const refLayer = layers.find(l => l.id === referenceLayerId);
@@ -300,22 +305,55 @@ const App: React.FC = () => {
               }
           }
 
-          // Gemini Image Edit with dynamic apiKey
-          const newImageBase64 = await editImageWithGemini(
+          // Call Generation/Edit Service
+          // if base64Img is null, it treats it as Text-to-Image generation
+          const newImageBase64 = await generateContentWithGemini(
               apiKey,
               base64Img, 
               prompt, 
               selectedModel,
               systemInstruction,
-              referenceBase64
+              referenceBase64,
+              aspectRatio,
+              resolution
           );
           
-          // Create result canvas
-          const resultCanvas = await base64ToCanvas(newImageBase64, targetW, targetH);
+          let resultCanvas: HTMLCanvasElement;
+          
+          // Post-process the result
+          if (aspectRatio || !activeLayer) {
+             // If we generated from scratch OR changed aspect ratio, use natural size
+             resultCanvas = await base64ToCanvasNatural(newImageBase64);
+             
+             // If this was a fresh generation (no layers), set canvas dims
+             if (layers.length === 0) {
+                 setCanvasDims({ width: resultCanvas.width, height: resultCanvas.height });
+                 // placeX/Y default to 0
+             } else if (isCrop) {
+                 // Center result in crop area
+                 const centerX = placeX + targetW / 2;
+                 const centerY = placeY + targetH / 2;
+                 placeX = centerX - resultCanvas.width / 2;
+                 placeY = centerY - resultCanvas.height / 2;
+             } else if (activeLayer) {
+                 // Center result over previous layer
+                 const centerX = placeX + activeLayer.canvas.width / 2;
+                 const centerY = placeY + activeLayer.canvas.height / 2;
+                 placeX = centerX - resultCanvas.width / 2;
+                 placeY = centerY - resultCanvas.height / 2;
+             } else {
+                 // New layer on top of existing layers, center it
+                 placeX = (canvasDims.width - resultCanvas.width) / 2;
+                 placeY = (canvasDims.height - resultCanvas.height) / 2;
+             }
+          } else {
+             // Edit mode without aspect change: stretch to fit target
+             resultCanvas = await base64ToCanvas(newImageBase64, targetW, targetH);
+          }
           
           const newLayer: Layer = {
               id: `layer-${Date.now()}`,
-              name: `Edit: ${prompt.substring(0, 15)}...`,
+              name: activeLayer ? `Edit: ${prompt.substring(0, 15)}...` : `Gen: ${prompt.substring(0, 15)}...`,
               visible: true,
               opacity: 1,
               canvas: resultCanvas,
@@ -327,12 +365,15 @@ const App: React.FC = () => {
           setLayers(prev => [...prev, newLayer]);
           setActiveLayerId(newLayer.id);
           setPrompt('');
-          // Clear selection after successful edit
           if (selection) setSelection(null); 
-          // Reset mode if needed, or stay in current
           if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
 
       } else if (mode === ToolMode.ANALYZE) {
+          if (!base64Img) {
+              alert("No image to analyze. Select a layer first.");
+              setIsProcessing(false);
+              return;
+          }
           setShowAnalysis(true);
           const text = await analyzeImageWithGemini(apiKey, base64Img, prompt);
           setAnalysisResults(prev => [{ text, timestamp: Date.now() }, ...prev]);
@@ -348,20 +389,17 @@ const App: React.FC = () => {
 
   const exportImage = () => {
       if (canvasDims.width === 0) return;
-      
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = canvasDims.width;
       exportCanvas.height = canvasDims.height;
       const ctx = exportCanvas.getContext('2d');
       if (!ctx) return;
-
       layers.forEach(layer => {
           if (layer.visible) {
             ctx.globalAlpha = layer.opacity;
             ctx.drawImage(layer.canvas, layer.x, layer.y);
           }
       });
-
       const link = document.createElement('a');
       link.download = 'nanolayer_export.png';
       link.href = exportCanvas.toDataURL('image/png');
@@ -378,8 +416,12 @@ const App: React.FC = () => {
     }
   };
 
-  const activeLayerName = layers.find(l => l.id === activeLayerId)?.name;
-  const referenceLayerName = layers.find(l => l.id === referenceLayerId)?.name;
+  const availableRefLayers = activeLayerId 
+    ? layers.filter(l => l.id !== activeLayerId) 
+    : layers;
+
+  // Get current reference layer for thumbnail display
+  const currentRefLayer = referenceLayerId ? layers.find(l => l.id === referenceLayerId) : null;
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-200 font-sans selection:bg-blue-500 selection:text-white">
@@ -395,117 +437,54 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-             <input 
-                type="file" 
-                ref={fileInputRef}
-                onChange={handleFileUpload} 
-                accept=".psd,.png,.jpg,.jpeg,.webp" 
-                className="hidden" 
-             />
-             
-             <input 
-                type="file" 
-                ref={addLayerInputRef}
-                onChange={handleAddLayerUpload} 
-                accept=".png,.jpg,.jpeg,.webp" 
-                className="hidden" 
-             />
+             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".psd,.png,.jpg,.jpeg,.webp" className="hidden" />
+             <input type="file" ref={addLayerInputRef} onChange={handleAddLayerUpload} accept=".png,.jpg,.jpeg,.webp" className="hidden" />
 
-             <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2"
-             >
+             <button onClick={() => fileInputRef.current?.click()} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2">
                 <i className="fa-solid fa-folder-open"></i> {t(language, 'open')}
              </button>
-             
              <div className="h-5 w-px bg-slate-700 mx-1"></div>
-
-             <button 
-                onClick={exportImage}
-                disabled={layers.length === 0}
-                className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50"
-             >
+             <button onClick={exportImage} disabled={layers.length === 0} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50">
                 <i className="fa-solid fa-file-image"></i> {t(language, 'exportPng')}
              </button>
-
-             <button 
-                onClick={handleExportPsd}
-                disabled={layers.length === 0}
-                className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50"
-             >
+             <button onClick={handleExportPsd} disabled={layers.length === 0} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50">
                 <i className="fa-solid fa-file-export"></i> {t(language, 'exportPsd')}
              </button>
 
              <div className="h-5 w-px bg-slate-700 mx-1"></div>
              
-             <button 
-                onClick={() => setShowSettings(true)}
-                className={`px-2 py-1 transition-colors ${!apiKey ? 'text-orange-400 animate-pulse' : 'text-slate-400 hover:text-white'}`}
-                title={t(language, 'settings')}
-             >
+             <button onClick={() => setShowSettings(true)} className={`px-2 py-1 transition-colors ${!apiKey ? 'text-orange-400 animate-pulse' : 'text-slate-400 hover:text-white'}`} title={t(language, 'settings')}>
                 <i className="fa-solid fa-gear"></i>
              </button>
+             {apiKey && (
+                 <button onClick={handleLogout} className="px-2 py-1 text-slate-400 hover:text-red-400 transition-colors" title={t(language, 'logout')}>
+                    <i className="fa-solid fa-right-from-bracket"></i>
+                 </button>
+             )}
         </div>
       </header>
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        
-        {/* Left: Toolbar / Layers */}
         <div className="flex flex-col z-10">
-            {/* Mode Switcher Sidebar */}
             <div className="w-14 bg-slate-900 border-r border-slate-700 flex flex-col items-center py-4 gap-4 h-full hidden md:flex">
-                 
-                 <button 
-                    onClick={() => setMode(ToolMode.MOVE)}
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${
-                        mode === ToolMode.MOVE ? 'bg-blue-600 text-white shadow-blue-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
-                    }`}
-                    title={t(language, 'toolMove')}
-                 >
+                 <button onClick={() => setMode(ToolMode.MOVE)} className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${mode === ToolMode.MOVE ? 'bg-blue-600 text-white shadow-blue-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`} title={t(language, 'toolMove')}>
                     <i className="fa-solid fa-arrows-up-down-left-right"></i>
                  </button>
-
                  <div className="w-8 h-px bg-slate-700 my-1"></div>
-
-                 <button 
-                    onClick={() => setMode(ToolMode.EDIT)}
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${
-                        mode === ToolMode.EDIT ? 'bg-blue-600 text-white shadow-blue-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
-                    }`}
-                    title={t(language, 'toolEdit')}
-                 >
+                 <button onClick={() => setMode(ToolMode.EDIT)} className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${mode === ToolMode.EDIT ? 'bg-blue-600 text-white shadow-blue-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`} title={t(language, 'toolEdit')}>
                     <i className="fa-solid fa-wand-magic-sparkles"></i>
                  </button>
-                 
-                 <button 
-                    onClick={() => setMode(ToolMode.SELECT)}
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${
-                        mode === ToolMode.SELECT ? 'bg-emerald-600 text-white shadow-emerald-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
-                    }`}
-                    title={t(language, 'toolSelect')}
-                 >
+                 <button onClick={() => setMode(ToolMode.SELECT)} className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${mode === ToolMode.SELECT ? 'bg-emerald-600 text-white shadow-emerald-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`} title={t(language, 'toolSelect')}>
                     <i className="fa-solid fa-crop-simple"></i>
                  </button>
-
                  <div className="w-8 h-px bg-slate-700 my-1"></div>
-
-                 <button 
-                    onClick={() => {
-                        setMode(ToolMode.ANALYZE);
-                        setShowAnalysis(true);
-                    }}
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${
-                        mode === ToolMode.ANALYZE ? 'bg-purple-600 text-white shadow-purple-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
-                    }`}
-                    title={t(language, 'toolAnalyze')}
-                 >
+                 <button onClick={() => { setMode(ToolMode.ANALYZE); setShowAnalysis(true); setShowConfigPanel(false); }} className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${mode === ToolMode.ANALYZE ? 'bg-purple-600 text-white shadow-purple-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`} title={t(language, 'toolAnalyze')}>
                     <i className="fa-solid fa-eye"></i>
                  </button>
             </div>
         </div>
 
-        {/* Layers List */}
         <LayerManager 
             layers={layers}
             activeLayerId={activeLayerId}
@@ -519,7 +498,6 @@ const App: React.FC = () => {
             lang={language}
         />
 
-        {/* Center Canvas */}
         <Workspace 
             width={canvasDims.width} 
             height={canvasDims.height} 
@@ -532,190 +510,116 @@ const App: React.FC = () => {
             lang={language}
         />
 
-        {/* Right Panel: Analysis (Conditional) */}
-        {showAnalysis && (
-            <AnalysisPanel 
+        {/* Right Side Panel Area */}
+        {showAnalysis ? (
+             <AnalysisPanel 
                 results={analysisResults} 
                 isLoading={isProcessing && mode === ToolMode.ANALYZE} 
-                onClose={() => setShowAnalysis(false)} 
+                onClose={() => { setShowAnalysis(false); setShowConfigPanel(true); }} 
+                lang={language} 
+            />
+        ) : (
+            <ConfigPanel 
+                isOpen={showConfigPanel}
+                onToggle={() => setShowConfigPanel(!showConfigPanel)}
                 lang={language}
+                selectedModel={selectedModel}
+                onSelectModel={setSelectedModel}
+                systemInstruction={systemInstruction}
+                onSystemInstructionChange={setSystemInstruction}
+                onApplyTemplate={applyTemplate}
+                aspectRatio={aspectRatio}
+                onAspectRatioChange={setAspectRatio}
+                resolution={resolution}
+                onResolutionChange={setResolution}
             />
         )}
         
-        {/* Floating Prompt Bar */}
+        {/* Floating Prompt Bar (Bottom) */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-20">
-            {/* System Instruction Popover */}
-            {showSystemPrompt && (
-                <div className="absolute bottom-14 left-0 w-full bg-slate-800 border border-slate-600 rounded-xl p-3 shadow-xl mb-2 animate-fade-in-up">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t(language, 'sysInstructionTitle')}</span>
-                        <button onClick={() => setShowSystemPrompt(false)} className="text-slate-400 hover:text-white">
-                            <i className="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                    <textarea 
-                        value={systemInstruction}
-                        onChange={(e) => setSystemInstruction(e.target.value)}
-                        placeholder={t(language, 'sysInstructionPlaceholder')}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-sm text-white placeholder-slate-500 focus:border-blue-500 outline-none resize-none h-20"
-                    />
-                </div>
-            )}
-            
-            {/* Model Selector Popover */}
-            {showModelSelector && (
-                 <div className="absolute bottom-14 left-10 w-56 bg-slate-800 border border-slate-600 rounded-xl p-2 shadow-xl mb-2 z-30">
-                    <div className="flex justify-between items-center mb-2 px-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t(language, 'modelSelectTitle')}</span>
-                        <button onClick={() => setShowModelSelector(false)} className="text-slate-400 hover:text-white">
-                            <i className="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                    <div className="space-y-1">
-                        <button 
-                            onClick={() => {
-                                setSelectedModel('gemini-2.5-flash-image');
-                                setShowModelSelector(false);
-                            }}
-                            className={`w-full flex items-center p-2 rounded text-left ${selectedModel === 'gemini-2.5-flash-image' ? 'bg-blue-900/40 text-blue-200 border border-blue-500/30' : 'hover:bg-slate-700 text-slate-300'}`}
-                        >
-                            <i className="fa-solid fa-bolt text-yellow-400 w-6 text-center"></i>
-                            <div>
-                                <div className="text-xs font-bold">Gemini 2.5 Flash</div>
-                                <div className="text-[10px] opacity-70">Fast & Efficient (Nano Banana)</div>
-                            </div>
-                        </button>
-
-                        <button 
-                            onClick={() => {
-                                setSelectedModel('gemini-3-pro-image-preview');
-                                setShowModelSelector(false);
-                            }}
-                            className={`w-full flex items-center p-2 rounded text-left ${selectedModel === 'gemini-3-pro-image-preview' ? 'bg-blue-900/40 text-blue-200 border border-blue-500/30' : 'hover:bg-slate-700 text-slate-300'}`}
-                        >
-                            <i className="fa-solid fa-gem text-purple-400 w-6 text-center"></i>
-                             <div>
-                                <div className="text-xs font-bold">Gemini 3.0 Pro</div>
-                                <div className="text-[10px] opacity-70">High Fidelity (Pro Image)</div>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            )}
-            
-            {/* Reference Layer Selector Popover */}
-            {showRefSelector && (
-                <div className="absolute bottom-14 left-10 w-64 bg-slate-800 border border-slate-600 rounded-xl p-2 shadow-xl mb-2 z-30">
-                    <div className="flex justify-between items-center mb-2 px-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t(language, 'refLayerTitle')}</span>
-                        <button onClick={() => setShowRefSelector(false)} className="text-slate-400 hover:text-white">
-                            <i className="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                    <div className="max-h-40 overflow-y-auto space-y-1">
-                        {layers.filter(l => l.id !== activeLayerId).map(layer => (
-                            <button
-                                key={layer.id}
-                                onClick={() => {
-                                    setReferenceLayerId(layer.id);
-                                    setShowRefSelector(false);
-                                }}
-                                className="w-full flex items-center p-2 rounded hover:bg-slate-700 text-left"
-                            >
-                                <div className="w-6 h-6 bg-slate-900 mr-2 border border-slate-600 overflow-hidden">
-                                     <img src={layer.canvas.toDataURL()} className="w-full h-full object-cover" alt="" />
-                                </div>
-                                <span className="text-sm text-slate-200 truncate">{layer.name}</span>
-                            </button>
-                        ))}
-                        {layers.filter(l => l.id !== activeLayerId).length === 0 && (
-                            <div className="text-xs text-slate-500 text-center py-2">{t(language, 'noRefLayers')}</div>
+            {/* Reference Layer Picker Popover */}
+            {showRefLayerPicker && (
+                <div className="absolute bottom-full mb-2 left-4 right-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-60">
+                     <div className="p-2 border-b border-slate-800 flex justify-between items-center bg-slate-850">
+                         <span className="text-xs font-bold text-slate-400 uppercase">{t(language, 'refLayerTitle')}</span>
+                         <button onClick={() => setShowRefLayerPicker(false)} className="text-slate-500 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
+                     </div>
+                     <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                        {availableRefLayers.length === 0 ? (
+                            <div className="text-center p-4 text-xs text-slate-500">{t(language, 'noRefLayers')}</div>
+                        ) : (
+                            availableRefLayers.map(layer => (
+                                <button
+                                    key={layer.id}
+                                    onClick={() => {
+                                        setReferenceLayerId(layer.id === referenceLayerId ? null : layer.id);
+                                        setShowRefLayerPicker(false);
+                                    }}
+                                    className={`w-full flex items-center p-2 rounded-lg transition-colors ${referenceLayerId === layer.id ? 'bg-indigo-600/20 ring-1 ring-indigo-500' : 'hover:bg-slate-800'}`}
+                                >
+                                    <div className="w-8 h-8 rounded overflow-hidden border border-slate-600 bg-slate-900 shrink-0">
+                                         <img src={layer.canvas.toDataURL()} className="w-full h-full object-cover" alt="" />
+                                    </div>
+                                    <span className="ml-3 text-xs text-slate-200 truncate">{layer.name}</span>
+                                    {referenceLayerId === layer.id && <i className="fa-solid fa-check ml-auto text-indigo-400 text-xs"></i>}
+                                </button>
+                            ))
                         )}
-                    </div>
+                     </div>
                 </div>
             )}
 
             <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700 p-2 rounded-2xl shadow-2xl shadow-black/50 flex items-center gap-2 relative">
+                {/* Mode Icon */}
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'bg-blue-600' : 'bg-purple-600'}`}>
                     <i className={`fa-solid ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'fa-wand-magic-sparkles' : 'fa-magnifying-glass'} text-white text-xs`}></i>
                 </div>
                 
-                {/* Tools Group */}
-                {(mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE) && (
-                    <div className="flex items-center gap-1 border-r border-slate-700 pr-2 mr-1">
-                         {/* Model Toggle */}
-                         <button 
-                            onClick={() => {
-                                setShowModelSelector(!showModelSelector);
-                                setShowSystemPrompt(false);
-                                setShowRefSelector(false);
-                            }}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${selectedModel.includes('pro') ? 'bg-purple-900/50 text-purple-400 border border-purple-500/50' : 'hover:bg-slate-800 text-slate-400'}`}
-                            title={t(language, 'modelSelectTitle')}
-                        >
-                            <span className="text-[10px] font-bold">{selectedModel === 'gemini-2.5-flash-image' ? '2.5' : '3.0'}</span>
-                        </button>
-
-                         {/* System Prompt Toggle */}
-                        <button 
-                            onClick={() => {
-                                setShowSystemPrompt(!showSystemPrompt);
-                                setShowRefSelector(false);
-                                setShowModelSelector(false);
-                            }}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${systemInstruction.trim() ? 'bg-blue-900/50 text-blue-400 border border-blue-500/50' : 'hover:bg-slate-800 text-slate-400'}`}
-                            title={t(language, 'sysInstructionTitle')}
-                        >
-                            <i className="fa-solid fa-sliders"></i>
-                        </button>
-                        
-                         {/* Reference Layer Toggle */}
-                         <button 
-                            onClick={() => {
-                                setShowRefSelector(!showRefSelector);
-                                setShowSystemPrompt(false);
-                                setShowModelSelector(false);
-                            }}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${referenceLayerId ? 'bg-indigo-900/50 text-indigo-400 border border-indigo-500/50' : 'hover:bg-slate-800 text-slate-400'}`}
-                            title={t(language, 'refLayerTitle')}
-                        >
-                            <i className="fa-solid fa-images"></i>
-                        </button>
-                    </div>
-                )}
+                {/* Reference Picker Button */}
+                <button 
+                    onClick={() => setShowRefLayerPicker(!showRefLayerPicker)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${referenceLayerId ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                    title={t(language, 'refLayerTitle')}
+                >
+                    <i className="fa-regular fa-image"></i>
+                </button>
                 
-                {/* Reference Indicator Pill */}
-                {referenceLayerId && (
-                    <div className="flex items-center bg-indigo-900/40 text-indigo-300 text-xs px-2 py-1 rounded border border-indigo-500/30 whitespace-nowrap">
-                        <i className="fa-solid fa-link mr-1.5 text-[10px]"></i>
-                        <span className="max-w-[80px] truncate">{referenceLayerName}</span>
-                        <button onClick={() => setReferenceLayerId(null)} className="ml-1.5 hover:text-white">
-                            <i className="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                )}
-
-                <input
-                    type="text"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleGeminiAction()}
-                    placeholder={
-                        selection 
-                            ? t(language, 'promptPlaceholderSelection') 
-                            : mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE
-                                ? (referenceLayerId ? t(language, 'promptPlaceholderRef') : t(language, 'promptPlaceholderLayer'))
-                                : t(language, 'promptPlaceholderDefault')
-                    }
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-slate-400 h-9 min-w-[100px]"
-                    disabled={isProcessing || !activeLayerId}
-                />
+                {/* Input Wrapper */}
+                <div className="flex-1 flex items-center gap-2 bg-slate-800/50 rounded-lg px-2 h-9 border border-transparent focus-within:border-slate-600 focus-within:bg-slate-800 transition-all">
+                    {/* Reference Pill */}
+                    {currentRefLayer && (
+                        <div className="flex items-center gap-1 bg-indigo-900/50 text-indigo-200 text-[10px] px-1.5 py-0.5 rounded border border-indigo-500/30 shrink-0 max-w-[100px]">
+                            <img src={currentRefLayer.canvas.toDataURL()} className="w-3 h-3 rounded-sm object-cover" alt="" />
+                            <span className="truncate">{currentRefLayer.name}</span>
+                            <button onClick={() => setReferenceLayerId(null)} className="hover:text-white ml-1"><i className="fa-solid fa-xmark"></i></button>
+                        </div>
+                    )}
+                    
+                    <input
+                        type="text"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleGeminiAction()}
+                        placeholder={
+                            selection 
+                                ? t(language, 'promptPlaceholderSelection') 
+                                : mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE
+                                    ? (activeLayerId 
+                                        ? (referenceLayerId ? t(language, 'promptPlaceholderRef') : t(language, 'promptPlaceholderLayer'))
+                                        : t(language, 'promptPlaceholderGenerate')
+                                    )
+                                    : t(language, 'promptPlaceholderDefault')
+                        }
+                        className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-slate-400 h-full min-w-[50px]"
+                        disabled={isProcessing}
+                    />
+                </div>
                 
                 <button
                     onClick={handleGeminiAction}
-                    disabled={isProcessing || !prompt.trim() || !activeLayerId}
+                    disabled={isProcessing || !prompt.trim()}
                     className={`h-9 px-4 rounded-xl text-xs font-bold uppercase tracking-wide transition-all
-                        ${isProcessing || !prompt.trim() || !activeLayerId 
+                        ${isProcessing || !prompt.trim()
                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
                             : (mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE
                                 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20' 
@@ -725,11 +629,6 @@ const App: React.FC = () => {
                     {isProcessing ? <i className="fa-solid fa-spinner fa-spin"></i> : t(language, 'generate')}
                 </button>
             </div>
-             {!activeLayerId && layers.length === 0 && (
-                <div className="text-center mt-2 text-xs text-slate-500 font-medium">
-                    {t(language, 'workspacePlaceholder')}
-                </div>
-            )}
         </div>
 
       </div>
@@ -748,60 +647,29 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="p-6 space-y-6">
-                      {/* Language Selection */}
                       <div>
                           <label className="block text-xs font-bold text-slate-400 uppercase mb-2">{t(language, 'language')}</label>
                           <div className="flex gap-2">
-                              <button 
-                                  onClick={() => setLanguage('en')}
-                                  className={`flex-1 py-2 rounded-md text-sm border ${language === 'en' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
-                              >
-                                  English
-                              </button>
-                              <button 
-                                  onClick={() => setLanguage('zh')}
-                                  className={`flex-1 py-2 rounded-md text-sm border ${language === 'zh' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
-                              >
-                                  中文
-                              </button>
+                              <button onClick={() => setLanguage('en')} className={`flex-1 py-2 rounded-md text-sm border ${language === 'en' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}>English</button>
+                              <button onClick={() => setLanguage('zh')} className={`flex-1 py-2 rounded-md text-sm border ${language === 'zh' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}>中文</button>
                           </div>
                       </div>
 
-                      {/* API Key Input */}
                       <div>
                           <label className="block text-xs font-bold text-slate-400 uppercase mb-2">{t(language, 'apiKey')}</label>
-                          <input 
-                              type="password" 
-                              value={apiKey}
-                              onChange={(e) => setApiKey(e.target.value)}
-                              placeholder={t(language, 'apiKeyPlaceholder')}
-                              className="w-full bg-slate-800 border border-slate-700 rounded-md p-2.5 text-sm text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
-                          />
+                          <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t(language, 'apiKeyPlaceholder')} className="w-full bg-slate-800 border border-slate-700 rounded-md p-2.5 text-sm text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all" />
                            <div className="mt-2 text-xs text-slate-500">
                                 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1">
                                     {t(language, 'getKeyLinkText')} <i className="fa-solid fa-up-right-from-square text-[10px]"></i>
                                 </a>
                            </div>
-                          <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                             <i className="fa-solid fa-circle-info mr-1"></i>
-                             {t(language, 'apiKeyHelp')}
-                          </p>
+                          <p className="text-[11px] text-slate-500 mt-2 leading-relaxed"><i className="fa-solid fa-circle-info mr-1"></i>{t(language, 'apiKeyHelp')}</p>
                       </div>
                   </div>
 
                   <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3">
-                      <button 
-                          onClick={() => setShowSettings(false)}
-                          className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition-colors"
-                      >
-                          {t(language, 'cancel')}
-                      </button>
-                      <button 
-                          onClick={() => saveSettings(apiKey, language)}
-                          className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
-                      >
-                          {t(language, 'save')}
-                      </button>
+                      <button onClick={() => setShowSettings(false)} className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition-colors">{t(language, 'cancel')}</button>
+                      <button onClick={() => saveSettings(apiKey, language)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all">{t(language, 'save')}</button>
                   </div>
               </div>
           </div>
@@ -817,7 +685,10 @@ const App: React.FC = () => {
                 </div>
             </div>
             <p className={`mt-4 font-medium tracking-wide ${selectedModel.includes('pro') ? 'text-purple-200' : 'text-blue-200'}`}>
-                {referenceLayerId ? t(language, 'loadingRef') : (selection ? t(language, 'loadingSelection') : `${t(language, 'loadingEdit')} ${selectedModel === 'gemini-3-pro-image-preview' ? 'Gemini 3 Pro' : 'Nano Banana'}...`)}
+                {activeLayerId 
+                    ? (referenceLayerId ? t(language, 'loadingRef') : (selection ? t(language, 'loadingSelection') : `${t(language, 'loadingEdit')} ${selectedModel === 'gemini-3-pro-image-preview' ? 'Gemini 3 Pro' : 'Nano Banana'}...`))
+                    : `${t(language, 'loadingGen')} ${selectedModel === 'gemini-3-pro-image-preview' ? 'Gemini 3 Pro' : 'Nano Banana'}...`
+                }
             </p>
         </div>
       )}
