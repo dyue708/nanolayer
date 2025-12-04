@@ -16,7 +16,7 @@ interface LayerManagerProps {
   lang: Language;
 }
 
-const LayerManager: React.FC<LayerManagerProps> = ({
+const LayerManager: React.FC<LayerManagerProps> = React.memo(({
   layers,
   activeLayerId,
   onSelectLayer,
@@ -76,7 +76,7 @@ const LayerManager: React.FC<LayerManagerProps> = ({
                 <div className="w-10 h-10 ml-2 bg-slate-700 rounded border border-slate-600 overflow-hidden relative shrink-0">
                     <div className="absolute inset-0 checkerboard-bg opacity-50"></div>
                     <img 
-                        src={layer.canvas.toDataURL()} 
+                        src={layer.thumbnail || layer.canvas.toDataURL()} 
                         alt="thumb" 
                         className="absolute inset-0 w-full h-full object-cover" 
                     />
@@ -149,6 +149,6 @@ const LayerManager: React.FC<LayerManagerProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default LayerManager;

@@ -15,7 +15,7 @@ interface WorkspaceProps {
   lang: Language;
 }
 
-const Workspace: React.FC<WorkspaceProps> = ({ 
+const Workspace: React.FC<WorkspaceProps> = React.memo(({ 
   width, 
   height, 
   layers, 
@@ -225,6 +225,6 @@ const Workspace: React.FC<WorkspaceProps> = ({
        </div>
     </div>
   );
-};
+});
 
 export default Workspace;

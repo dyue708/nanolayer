@@ -5,6 +5,7 @@ export interface Layer {
   visible: boolean;
   opacity: number; // 0 to 1
   canvas: HTMLCanvasElement; // Stores the actual image data
+  thumbnail?: string; // Base64 cached preview
   zIndex: number;
   x: number;
   y: number;

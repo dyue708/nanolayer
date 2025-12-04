@@ -3,6 +3,27 @@ import { Layer } from '../types';
 import { readPsd, writePsd, Psd } from 'ag-psd'; // Assuming ag-psd is installed in the environment
 
 /**
+ * Generates a small thumbnail (80px max dim) base64 string from a canvas.
+ * This improves performance by avoiding toDataURL on large canvases during render.
+ */
+export const generateThumbnail = (sourceCanvas: HTMLCanvasElement): string => {
+    const thumbSize = 80;
+    const scale = Math.min(thumbSize / sourceCanvas.width, thumbSize / sourceCanvas.height, 1);
+    const w = Math.floor(sourceCanvas.width * scale);
+    const h = Math.floor(sourceCanvas.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        ctx.drawImage(sourceCanvas, 0, 0, w, h);
+        return canvas.toDataURL('image/png');
+    }
+    return '';
+};
+
+/**
  * Converts a File object (PSD) to our internal Layer structure.
  * Uses ag-psd to parse the file.
  */
@@ -44,6 +65,7 @@ export const parsePsdFile = async (file: File): Promise<{ width: number; height:
                     visible: !layer.hidden,
                     opacity: layer.opacity != null ? layer.opacity : 1,
                     canvas: finalCanvas,
+                    thumbnail: generateThumbnail(finalCanvas),
                     zIndex: index,
                     x: layerX,
                     y: layerY
@@ -71,6 +93,7 @@ export const parsePsdFile = async (file: File): Promise<{ width: number; height:
             visible: true,
             opacity: 1,
             canvas: fullCanvas,
+            thumbnail: generateThumbnail(fullCanvas),
             zIndex: 0,
             x: 0,
             y: 0
@@ -106,6 +129,7 @@ export const parseImageFile = async (file: File): Promise<{ width: number; heigh
                     visible: true,
                     opacity: 1,
                     canvas: canvas,
+                    thumbnail: generateThumbnail(canvas),
                     zIndex: 0,
                     x: 0,
                     y: 0

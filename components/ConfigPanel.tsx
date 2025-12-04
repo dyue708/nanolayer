@@ -24,7 +24,7 @@ interface ConfigPanelProps {
   onResolutionChange: (val: ImageResolution) => void;
 }
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({
+const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
   isOpen,
   onToggle,
   lang,
@@ -173,6 +173,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default ConfigPanel;
