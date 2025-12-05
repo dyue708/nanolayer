@@ -35,6 +35,9 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [language, setLanguage] = useState<Language>('en');
+  
+  // Prompt Reuse State
+  const [reusedPrompt, setReusedPrompt] = useState<string | undefined>(undefined);
 
   // Load Settings from LocalStorage on mount
   useEffect(() => {
@@ -375,7 +378,8 @@ const App: React.FC = () => {
               zIndex: layers.length,
               x: placeX,
               y: placeY,
-              cost: genCost
+              cost: genCost,
+              prompt: promptText
           };
           
           setLayers(prev => [...prev, newLayer]);
@@ -416,6 +420,12 @@ const App: React.FC = () => {
         setIsProcessing(false);
     }
   };
+  
+  const handleReusePrompt = useCallback((promptToReuse: string) => {
+      setReusedPrompt(promptToReuse);
+      // Reset after a brief moment so it can be triggered again if needed
+      setTimeout(() => setReusedPrompt(undefined), 100);
+  }, []);
 
   const exportImage = () => {
       if (canvasDims.width === 0) return;
@@ -466,6 +476,9 @@ const App: React.FC = () => {
 
   // Get current reference layer for thumbnail display
   const currentRefLayer = referenceLayerId ? layers.find(l => l.id === referenceLayerId) : undefined;
+  
+  // Get current active layer for details display
+  const activeLayer = activeLayerId ? layers.find(l => l.id === activeLayerId) : undefined;
 
   // Calculate Total Cost
   const totalCost = layers.reduce((acc, layer) => acc + (layer.cost || 0), 0);
@@ -581,6 +594,8 @@ const App: React.FC = () => {
                 isOpen={showConfigPanel}
                 onToggle={() => setShowConfigPanel(!showConfigPanel)}
                 lang={language}
+                activeLayer={activeLayer}
+                onReusePrompt={handleReusePrompt}
                 selectedModel={selectedModel}
                 onSelectModel={setSelectedModel}
                 systemInstruction={systemInstruction}
@@ -604,6 +619,7 @@ const App: React.FC = () => {
             availableRefLayers={availableRefLayers}
             currentRefLayer={currentRefLayer}
             lang={language}
+            externalPrompt={reusedPrompt}
         />
 
       </div>

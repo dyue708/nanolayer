@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ImageGenerationModel, Language, AspectRatio, ImageResolution } from '../types';
+import { ImageGenerationModel, Language, AspectRatio, ImageResolution, Layer } from '../types';
 import { t } from '../utils/i18n';
 
 interface ConfigPanelProps {
@@ -8,6 +8,10 @@ interface ConfigPanelProps {
   onToggle: () => void;
   lang: Language;
   
+  // Active Layer for Details
+  activeLayer: Layer | undefined;
+  onReusePrompt: (prompt: string) => void;
+
   // Model State
   selectedModel: ImageGenerationModel;
   onSelectModel: (model: ImageGenerationModel) => void;
@@ -28,6 +32,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
   isOpen,
   onToggle,
   lang,
+  activeLayer,
+  onReusePrompt,
   selectedModel,
   onSelectModel,
   systemInstruction,
@@ -67,6 +73,38 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+        
+        {/* Layer Details / Prompt Reuse */}
+        <section className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+            <label className="block text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center gap-1">
+                <i className="fa-solid fa-circle-info"></i> {t(lang, 'layerDetails')}
+            </label>
+            {activeLayer && activeLayer.prompt ? (
+                <div>
+                    <div className="text-xs text-slate-400 mb-1">{t(lang, 'usedPrompt')}:</div>
+                    <div className="bg-slate-900 p-2 rounded text-xs text-slate-300 italic mb-2 max-h-20 overflow-y-auto custom-scrollbar">
+                        "{activeLayer.prompt}"
+                    </div>
+                    <button 
+                        onClick={() => onReusePrompt(activeLayer.prompt!)}
+                        className="w-full py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs text-white transition-colors flex items-center justify-center gap-2"
+                    >
+                        <i className="fa-solid fa-rotate-left"></i> {t(lang, 'reusePrompt')}
+                    </button>
+                    {activeLayer.cost && (
+                        <div className="mt-2 text-[10px] text-slate-500 text-right">
+                            Cost: ${activeLayer.cost.toFixed(4)}
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="text-xs text-slate-500 italic text-center py-2">
+                    {t(lang, 'noPromptInfo')}
+                </div>
+            )}
+        </section>
+
+        <hr className="border-slate-800" />
         
         {/* Model Selector */}
         <section>

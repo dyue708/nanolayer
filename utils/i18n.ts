@@ -64,6 +64,12 @@ export const translations = {
     aspectRatio: "Aspect Ratio",
     resolution: "Resolution (Pro Only)",
     ratioOriginal: "Original / Selection",
+    
+    // Layer Details
+    layerDetails: "Layer Details",
+    usedPrompt: "Used Prompt",
+    reusePrompt: "Reuse Prompt",
+    noPromptInfo: "No generation data for this layer.",
   },
   zh: {
     appTitle: "NanoLayer",
@@ -127,6 +133,12 @@ export const translations = {
     aspectRatio: "长宽比",
     resolution: "分辨率 (仅 Pro)",
     ratioOriginal: "原始比例 / 选区",
+
+    // Layer Details
+    layerDetails: "图层详情",
+    usedPrompt: "生成提示词",
+    reusePrompt: "重用提示词",
+    noPromptInfo: "此图层无生成信息。",
   }
 };
 

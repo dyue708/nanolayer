@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layer, ToolMode, Language, SelectionRect } from '../types';
 import { t } from '../utils/i18n';
 
@@ -17,6 +17,9 @@ interface PromptBarProps {
   currentRefLayer: Layer | undefined;
   
   lang: Language;
+  
+  // Reuse Prompt
+  externalPrompt?: string;
 }
 
 const PromptBar: React.FC<PromptBarProps> = ({
@@ -29,10 +32,18 @@ const PromptBar: React.FC<PromptBarProps> = ({
   onSelectRefLayer,
   availableRefLayers,
   currentRefLayer,
-  lang
+  lang,
+  externalPrompt
 }) => {
   const [prompt, setPrompt] = useState('');
   const [showRefLayerPicker, setShowRefLayerPicker] = useState(false);
+
+  // Sync external prompt when it changes (e.g. reused from history)
+  useEffect(() => {
+      if (externalPrompt) {
+          setPrompt(externalPrompt);
+      }
+  }, [externalPrompt]);
 
   const handleGenerate = () => {
     if (!prompt.trim()) return;

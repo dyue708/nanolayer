@@ -10,6 +10,7 @@ export interface Layer {
   x: number;
   y: number;
   cost?: number;
+  prompt?: string;
 }
 
 export enum ToolMode {
