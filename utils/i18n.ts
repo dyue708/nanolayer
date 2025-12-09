@@ -74,9 +74,11 @@ export const translations = {
     noPromptInfo: "No generation data for this layer.",
 
     // Prompt Gallery
-    promptGalleryTitle: "Prompt Gallery",
-    promptGallerySubtitle: "High-quality examples to jumpstart your creativity.",
-    useThisPrompt: "Use This Prompt",
+    promptGalleryTitle: "Style Gallery",
+    promptGallerySubtitle: "Select a style to apply to your own images or generate new ones.",
+    tryStyle: "Try This Style",
+    requiresImage: "Requires an image",
+    uploadImageFirst: "Please upload an image first to use this style.",
   },
   zh: {
     appTitle: "NanoLayer",
@@ -150,9 +152,11 @@ export const translations = {
     noPromptInfo: "此图层无生成信息。",
 
     // Prompt Gallery
-    promptGalleryTitle: "提示词图库",
-    promptGallerySubtitle: "高质量的示例，助您激发创意。",
-    useThisPrompt: "使用此提示词",
+    promptGalleryTitle: "风格图库",
+    promptGallerySubtitle: "选择一种风格应用到您的图片，或生成新图片。",
+    tryStyle: "做同款 / 尝试风格",
+    requiresImage: "需要上传图片",
+    uploadImageFirst: "请先上传一张图片，然后才能使用此风格。",
   }
 };
 

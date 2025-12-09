@@ -7,7 +7,7 @@ import { t } from '../utils/i18n';
 interface PromptGalleryProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (prompt: string) => void;
+  onSelect: (example: PromptExample) => void;
   lang: Language;
 }
 
@@ -22,7 +22,7 @@ const PromptGallery: React.FC<PromptGalleryProps> = ({ isOpen, onClose, onSelect
         <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-850">
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <i className="fa-solid fa-images text-blue-400"></i> {t(lang, 'promptGalleryTitle')}
+              <i className="fa-solid fa-wand-magic-sparkles text-purple-400"></i> {t(lang, 'promptGalleryTitle')}
             </h2>
             <p className="text-sm text-slate-400 mt-1">{t(lang, 'promptGallerySubtitle')}</p>
           </div>
@@ -54,6 +54,13 @@ const PromptGallery: React.FC<PromptGalleryProps> = ({ isOpen, onClose, onSelect
                       loading="lazy"
                    />
                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60"></div>
+                   
+                   {/* Badge for Image Requirement */}
+                   {example.requiresImage && (
+                       <div className="absolute top-2 right-2 bg-slate-900/80 backdrop-blur text-[10px] text-white px-2 py-1 rounded-full border border-slate-700 flex items-center gap-1 shadow-sm">
+                           <i className="fa-regular fa-image"></i> {t(lang, 'requiresImage')}
+                       </div>
+                   )}
                 </div>
 
                 <div className="p-4 flex flex-col flex-1">
@@ -65,10 +72,10 @@ const PromptGallery: React.FC<PromptGalleryProps> = ({ isOpen, onClose, onSelect
                   </p>
                   
                   <button 
-                    onClick={() => onSelect(example.prompt)}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
+                    onClick={() => onSelect(example)}
+                    className={`w-full py-2 rounded text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 shadow-lg ${example.requiresImage ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'} text-white`}
                   >
-                    <i className="fa-solid fa-wand-magic-sparkles"></i> {t(lang, 'useThisPrompt')}
+                    <i className="fa-solid fa-wand-magic-sparkles"></i> {t(lang, 'tryStyle')}
                   </button>
                 </div>
               </div>

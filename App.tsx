@@ -10,6 +10,7 @@ import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, L
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail } from './utils/psdHelper';
 import { generateContentWithGemini, analyzeImageWithGemini } from './services/geminiService';
 import { t } from './utils/i18n';
+import { PromptExample } from './utils/promptExamples';
 
 const App: React.FC = () => {
   const [layers, setLayers] = useState<Layer[]>([]);
@@ -431,10 +432,31 @@ const App: React.FC = () => {
       setTimeout(() => setReusedPrompt(undefined), 100);
   }, []);
 
-  const handleSelectFromGallery = useCallback((prompt: string) => {
+  const handleSelectFromGallery = useCallback((example: PromptExample) => {
+      // 1. Check if the example requires an image and we don't have one
+      if (example.requiresImage && layers.length === 0) {
+          alert(t(language, 'uploadImageFirst'));
+          fileInputRef.current?.click();
+          // Ideally we would queue this action after upload, but for now we just prompt
+          setShowGallery(false);
+          return;
+      }
+
+      // 2. Clear system instruction (style merged into prompt now)
+      setSystemInstruction('');
+
+      // 3. Set Prompt based on language
+      const textToUse = (language === 'zh' && example.promptZh) ? example.promptZh : example.prompt;
+
       setShowGallery(false);
-      handleReusePrompt(prompt);
-  }, [handleReusePrompt]);
+      handleReusePrompt(textToUse);
+      
+      // If user has no layers but this is a text-to-image prompt, they might want model selection open
+      if (layers.length === 0 && !example.requiresImage) {
+          setShowConfigPanel(true);
+      }
+
+  }, [layers, language, handleReusePrompt]);
 
   const exportImage = () => {
       if (canvasDims.width === 0) return;
