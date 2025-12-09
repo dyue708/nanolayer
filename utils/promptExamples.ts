@@ -9,9 +9,12 @@ export interface PromptExample {
   promptZh?: string;
   imageSrc: string;
   requiresImage?: boolean;
+  category: string;
+  categoryZh: string;
 }
 
 export const PROMPT_EXAMPLES: PromptExample[] = [
+  // --- 1. Photorealism & Aesthetics ---
   {
     id: '1.1',
     title: 'Hyper-Realistic Crowd',
@@ -21,7 +24,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/3a056a8d-904e-4b3e-b0d2-b5122758b7f5',
     prompt: "Create a hyper-realistic, ultra-sharp, large-format image. Style: Photorealistic, 8k, shallow depth of field, soft natural fill light + strong golden rim light. High dynamic range, calibrated color grading. Skin tones perfectly accurate. Crisp fabric detail. Environment: A luxurious open-air rooftop terrace at sunset. Subject: A massive group of celebrities standing together in a cinematic frame.",
     promptZh: "创作一张超写实、极其清晰的大画幅图像。风格：照片写实，8k分辨率，浅景深，柔和的自然补光+强烈的金色轮廓光。高动态范围，校准的色彩分级。肤色精准。织物细节清晰。环境：日落时分的豪华露天屋顶露台。主体：一大群名人站在电影般的画面中。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.2',
@@ -32,7 +37,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/b71755dc-ff33-4872-8161-3f5066e0ccb6',
     prompt: "Style: 2000s Mirror Selfie aesthetic. Camera: Early-2000s digital camera, harsh super-flash with bright blown-out highlights. Texture: Subtle grain, retro highlights, soft shadows. Atmosphere: Nostalgic early-2000s vibe. Subject: A young woman taking a mirror selfie in a messy bedroom.",
     promptZh: "风格：2000年代镜面自拍美学。相机：2000年代早期的数码相机，刺眼的超级闪光灯，高光溢出。质感：微妙的颗粒感，复古高光，柔和的阴影。氛围：怀旧的2000年代早期氛围。主体：一位年轻女子在凌乱的卧室里对着镜子自拍。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.3',
@@ -43,7 +50,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/963c0a46-cf86-4604-8782-524b94afc51d',
     prompt: "Style: Victoria's Secret Fashion Show Backstage. Lighting: Flash photography emphasizing shine of beads and skin. Mood: Sensuality, luxury, glamour. Maintain facial features 100% accurate to the reference. Subject: A glamorous backstage photo of the subject wearing a corset decorated with beads and crystals, and large feather wings. Makeup artists are applying lipstick.",
     promptZh: "风格：维多利亚的秘密时尚秀后台。光线：闪光灯摄影，强调珠子和皮肤的光泽。氛围：感性、奢华、魅力。保持面部特征与参考图100%一致。主体：一张迷人的后台照片，模特身穿装饰有珠子和水晶的紧身胸衣，戴着巨大的羽毛翅膀。化妆师正在涂口红。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.4',
@@ -54,7 +63,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/eca5066b-1bf6-4a97-8b81-63e9e7435050',
     prompt: "Style: 1990s-style camera with direct front flash (35mm lens). Texture: Film grain, nostalgic glow. Background: Dark wall with posters, dim lighting. Preserve original face. Subject: Portrait of the subject with messy dark brown hair tied up, posing with a calm smile. Wearing an oversized cream sweater.",
     promptZh: "风格：90年代风格相机，直接前置闪光灯（35mm镜头）。质感：胶片颗粒，怀旧光晕。背景：贴满海报的暗墙，昏暗的灯光。保留原始面孔。主体：肖像，凌乱的深棕色头发扎起来，带着平静的微笑摆姿势。穿着超大号的奶油色毛衣。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.5',
@@ -65,7 +76,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/793ad242-7867-4709-bdc6-55021f5eb78f',
     prompt: "Style: Silicon Valley Professional Headshot. Camera: Sony A7III, 85mm f/1.4 lens. Lighting: Classic three-point lighting, soft key light, subtle rim light. Background: Clean, solid dark gray studio backdrop with vignette. Details: Natural skin texture (no airbrushing), natural catchlights. Subject: A professional headshot of the subject wearing a navy blue business suit and white shirt.",
     promptZh: "风格：硅谷专业头像。相机：Sony A7III，85mm f/1.4 镜头。布光：经典三点布光，柔和的主光，微妙的轮廓光。背景：干净、纯深灰色的摄影棚背景，带有晕影。细节：自然的皮肤纹理（无磨皮），自然的眼神光。主体：身穿海军蓝商务西装和白衬衫的专业头像。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.6',
@@ -76,7 +89,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/243d1b11-9ef0-4d4f-b308-97d67b5d3bc3',
     prompt: "Style: Kodak Portra 400 film. Setting: Urban coffee shop window at Golden Hour (sunset). Atmosphere: Dreamy, storytelling vibe, subtle film grain, soft focus. Details: Bokeh background of city lights. Subject: Cinematic portrait of the subject looking slightly away, holding a coffee cup.",
     promptZh: "风格：Kodak Portra 400 胶片。场景：日落黄金时段的城市咖啡店橱窗。氛围：梦幻、叙事感，微妙的胶片颗粒，柔焦。细节：城市灯光的散景背景。主体：电影感的肖像，稍微看向别处，手里拿着咖啡杯。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.7',
@@ -87,7 +102,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G6x00O_XIAASY0r?format=jpg&name=900x900',
     prompt: "Maintain exact facial structure and identity. Style: Professional photo studio shoot. Outfit: Premium smart casual blazer (charcoal gray). Background: Solid #562226 neutral studio color. Lighting: Bright, airy, soft diffused studio lighting. Camera: 85mm f/1.8 lens, shallow depth of field, focus on eyes. Subject: A professional profile photo of the subject, framed from chest up.",
     promptZh: "保持完全相同的面部结构和身份特征。风格：专业摄影棚拍摄。服装：高级商务休闲西装（炭灰色）。背景：纯色 #562226 中性影棚背景色。光线：明亮、通风、柔和的漫射影棚光。相机：85mm f/1.8 镜头，浅景深，聚焦于眼睛。主体：专业的个人资料照片，取景至胸部以上。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.8',
@@ -98,7 +115,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7Ah9SIbIAAGlyu?format=jpg&name=900x900',
     prompt: "Lighting: Narrow beam spotlight focused only on center of face. Sharp, dramatic edges. High falloff shadow. Style: Dark, moody, mysterious. Clothing blends into darkness. Subject: A hyperrealistic realistic-anime portrait of a female character standing in a completely black background. One hand raised gently to lips.",
     promptZh: "光线：聚焦于面部中心的窄光束聚光灯。边缘锐利、戏剧化。高衰减阴影。风格：黑暗、情绪化、神秘。衣服融入黑暗中。主体：站在全黑背景中的超写实动漫女性角色肖像。一只手轻轻举到嘴边。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.9',
@@ -109,7 +128,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7PebGOW8AALh2P?format=jpg&name=large',
     prompt: "Style: Casual iPhone mirror selfie, social media quality. Vibe: 'Innocent face but devil body'. Lighting: Good vanity lighting. Background: Regular apartment bathroom, white subway tiles. Subject: Young woman taking a bathroom mirror selfie. Wearing a mini crop tee and tight tennis skirt.",
     promptZh: "风格：随意的 iPhone 镜面自拍，社交媒体画质。氛围：“天使面孔，魔鬼身材”。光线：良好的梳妆台照明。背景：普通公寓浴室，白色地铁砖。主体：年轻女子在浴室对着镜子自拍。穿着迷你露脐T恤和紧身网球裙。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.10',
@@ -120,7 +141,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G65Uh3ebkAEqbv5?format=jpg&name=medium',
     prompt: "Style: Documentary realism. Medium: Chalk on green blackboard. Texture: Dusty, matte chalk quality, visible hatching. Lighting: Diffuse ambient classroom lighting. Perspective: Eye-level, including teacher's desk in foreground. Subject: Photorealistic photo of a chalkboard drawing of an anime character in a classroom.",
     promptZh: "风格：纪录片写实主义。媒介：绿色黑板上的粉笔画。质感：多尘、哑光粉笔质感，可见排线。光线：漫射的教室环境光。视角：视平线，前景包含讲台。主体：教室里动漫角色黑板画的写实照片。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.11',
@@ -131,7 +154,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G6qMd2abwAA-hAi?format=jpg&name=900x900',
     prompt: "Preserve facial features exactly. Environment: Outdoors, winter, snow covering ground. Mood: Cute, natural. Camera: Soft depth of field, natural daylight. Subject: Winter portrait of the subject with a small white puppy.",
     promptZh: "精准保留面部特征。环境：户外，冬季，地面覆盖着雪。氛围：可爱，自然。相机：浅景深，自然日光。主体：带有小白狗的冬季人像。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.12',
@@ -142,7 +167,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7Q6stnXIAAe7Vz?format=jpg&name=small',
     prompt: "Lens: Vintage 35mm fisheye, heavy barrel distortion. Lighting: Harsh direct on-camera flash, hard shadows. Texture: Authentic film grain, chromatic aberration. Vibe: Chaotic behind-the-scenes snapshot. Subject: A film-like fisheye 360-degree selfie of the subject with movie characters.",
     promptZh: "镜头：复古35mm鱼眼镜头，严重的桶形畸变。光线：刺眼的机顶直闪，硬阴影。质感：真实的胶片颗粒，色差。氛围：混乱的幕后抓拍。主体：像电影一样的鱼眼360度自拍，与电影角色合影。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.13',
@@ -153,7 +180,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7HwgjGaYAAgJ67?format=jpg&name=small',
     prompt: "Keep the person exactly as shown in the reference image with 100% identical facial features, bone structure, skin tone, facial expression. Quality: 4K detail. Subject: I'm taking a selfie with a movie character on a movie set.",
     promptZh: "保持人物与参考图像完全一致，100%相同的面部特征、骨骼结构、肤色、面部表情。画质：4K细节。主体：我正在电影片场与电影角色自拍。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.14',
@@ -164,7 +193,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7N2KUIbMAAspf6?format=jpg&name=900x900',
     prompt: "Style: Commercial grade photography. Painting Style: Traditional oil painting, thick impasto brushstrokes. Lighting: Gallery spotlights, dramatic shadows. Quality: 8K UHD. Subject: Photo of the subject posing inside a high-end museum exhibition space. Behind them hangs a large classical oil painting of themselves.",
     promptZh: "风格：商业级摄影。绘画风格：传统油画，厚重的厚涂笔触。光线：画廊聚光灯，戏剧性阴影。画质：8K UHD。主体：在高端博物馆展览空间内摆姿势的照片。身后挂着一幅他们自己的大型古典油画。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.15',
@@ -175,7 +206,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7NVohbbgAcUFBe?format=jpg&name=900x900',
     prompt: "Context: Camera body visible (buttons, dials). Screen image: Illuminated by bright built-in flash, nostalgic early 2000s snapshot. Lighting: Harsh direct flash on subject, ambient low light background. Color Grading: Nostalgic digital-camera tones, high contrast flash. Subject: A close-up shot of the subject displayed on the screen of a compact Canon digital camera.",
     promptZh: "语境：相机机身可见（按钮、拨盘）。屏幕图像：被明亮的内置闪光灯照亮，怀旧的2000年代早期快照。光线：对主体的刺眼直闪，背景为低环境光。调色：怀旧数码相机色调，高对比度闪光。主体：紧凑型佳能数码相机屏幕上显示的主体特写镜头。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.16',
@@ -186,7 +219,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7QmCFcXoAAwaet?format=jpg&name=large',
     prompt: "Design: Serif font, black on white. Elements: Issue number, date, barcode, price. Environment: Magazine standing on a white shelf against a wall. Subject: A photo of a glossy magazine cover titled 'Nano Banana Pro'. In front of the text is a dynamic portrait of the subject.",
     promptZh: "设计：衬线字体，黑底白字。元素：期号、日期、条形码、价格。环境：立在靠墙白色架子上的杂志。主体：一张名为 'Nano Banana Pro' 的光面杂志封面照片。文字前方是充满活力的主体肖像。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
   {
     id: '1.17',
@@ -197,8 +232,12 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://raw.githubusercontent.com/ZeroLu/awesome-nanobanana-pro/refs/heads/main/assets/luxury-product-shot.jpg',
     prompt: "Style: High-end commercial photography. Lighting: Golden hour glow, reflections on water. Mood: Ethereal and luxurious. Camera: Shallow depth of field, soft bokeh. Subject: Luxury product shot of a bottle floating on dark water with flowers arranged around it.",
     promptZh: "风格：高端商业摄影。光线：黄金时段的光辉，水面反射。氛围：空灵且奢华。相机：浅景深，柔和散景。主体：漂浮在深色水面上的奢华瓶子产品照，周围摆放着鲜花。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Photorealism & Aesthetics",
+    categoryZh: "写实与美学"
   },
+
+  // --- 2. Creative Experiments ---
   {
     id: '2.1',
     title: 'Star Wars "Where\'s Waldo"',
@@ -208,7 +247,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/439317c2-4be8-4b28-803f-36427ecca31e',
     prompt: "Style: Detailed illustration/crowd photography. Content: Extremely dense crowd of Star Wars characters. Include Waldo hidden somewhere. Subject: A 'Where is Waldo' style image showing all Star Wars characters on Tatooine.",
     promptZh: "风格：详细插图/人群摄影。内容：极其密集的星球大战角色人群。将威利（Waldo）隐藏在某处。主体：一张“威利在哪里”风格的图片，展示塔图因星球上的所有星球大战角色。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.2',
@@ -219,7 +260,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/74fced67-0715-46d3-b788-d9ed9e98873b',
     prompt: "Task: Age progression. Maintain identity perfectly but apply aging effects (wrinkles, grey hair) consistent with an 80 year old. Subject: Generate a holiday photo of this person at age 80.",
     promptZh: "任务：年龄演变。完美保持身份特征，但应用符合80岁老人的衰老效果（皱纹、白发）。主体：生成此人80岁时的节日照片。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.3',
@@ -230,7 +273,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/f7ef5a84-e2bf-4d4e-a93e-38a23a21b9ef',
     prompt: "Style: Realistic. Effect: Droste effect / Infinite recursion. Subject: Recursive image of an orange cat sitting in an office chair holding up an iPad. On the iPad is the same cat in the same scene holding up the same iPad.",
     promptZh: "风格：写实。效果：德罗斯特效应 / 无限递归。主体：一只橘猫坐在办公椅上举着 iPad 的递归图像。在 iPad 上是同一只猫在同一场景中举着同一个 iPad。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.4',
@@ -241,7 +286,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/8629b88a-b872-43e2-a19e-855542702ac2',
     prompt: "Task: Interpret geolocation coordinates and render the specific location and time of day photorealistically. Subject: 35.6586° N, 139.7454° E at 19:00",
     promptZh: "任务：解释地理定位坐标并以照片级写实的方式渲染特定位置和时间。主体：北纬 35.6586°，东经 139.7454°，时间 19:00。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.5',
@@ -252,7 +299,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/761380fe-0850-49e2-8589-797f10b7cb8d',
     prompt: "Style: Conceptual art / Blueprint overlay / Technical visualization. Subject: How engineers see the San Francisco Bridge",
     promptZh: "风格：概念艺术 / 蓝图叠加 / 技术可视化。主体：工程师眼中的旧金山大桥。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.6',
@@ -263,7 +312,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://replicate.delivery/xezq/piAS0s9DshbqMFXJvIfw9feWaEaNsejlRifhVgMSflvZJzzaF/tmp3u2ym4f_.jpeg',
     prompt: "Task: Literal visual interpretation of the filename. Subject: rare.jpg",
     promptZh: "任务：文件名的字面视觉解释。主体：rare.jpg (罕见.jpg / 三分熟.jpg)",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.7',
@@ -274,7 +325,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/54e2a2eb-1ab4-4f2b-86a2-7a59856e615f',
     prompt: "Task: Group composition. Combine subjects into a cohesive environment. Subject: An office team photo, everyone making a silly face.",
     promptZh: "任务：团队构图。将主体组合到一个连贯的环境中。主体：一张办公室团队合影，每个人都做着鬼脸。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.8',
@@ -285,7 +338,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://github.com/user-attachments/assets/b399c4d9-151b-4e15-9a40-f092f7a892b9',
     prompt: "Style: Whiteboard art. Medium: Faded green marker on glass. Texture: Glossy reflection, imperfect lines. Subject: Photo of a samurai praying drawn on a glass whiteboard in a slightly faded green marker.",
     promptZh: "风格：白板艺术。媒介：玻璃上的褪色绿色马克笔。质感：光泽反射，不完美的线条。主体：用略微褪色的绿色马克笔在玻璃白板上画的武士祈祷照片。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.9',
@@ -296,7 +351,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7LmGCQWYAAfp47?format=jpg&name=small',
     prompt: "Composition: Split View. Left Half: Full Realism (opaque, accurate materials). Right Half: Hard Cut Wireframe Interior (white lines, engineering style). Boundary: Vertical sharp cut. Background: Minimalist dark. Subject: A high-quality 3D render of an Orange iPhone 17 Pro floating in mid-air.",
     promptZh: "构图：分屏视图。左半部分：完全写实（不透明，材质精准）。右半部分：硬切线框内部（白线，工程风格）。边界：垂直锐利切割。背景：极简暗色。主体：漂浮在空中的橙色 iPhone 17 Pro 的高质量 3D 渲染。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.10',
@@ -307,7 +364,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7LGpq0XAAAxcIP?format=jpg&name=medium',
     prompt: "Style: Cute, polished 3D isometric diorama. Colors: Soft pastel. Materials: Clean, smooth, gentle shadows. Layout: Accurate geography. Subject: High-detail 3D isometric diorama of the United States with miniature landmarks.",
     promptZh: "风格：可爱的、抛光的 3D 等距透视模型。颜色：柔和的粉彩。材质：干净、光滑、柔和的阴影。布局：精准的地理分布。主体：带有微缩地标的美国高细节 3D 等距透视模型。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.11',
@@ -318,7 +377,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7I5dbiWwAAYOox?format=jpg&name=medium',
     prompt: "Style: Photorealistic food art. Constraint: States must look like they are physically constructed from the food. Subject: Map of the US where every state is made out of its most famous food.",
     promptZh: "风格：写实食物艺术。约束：各州必须看起来像是用食物物理构建的。主体：美国地图，每个州都由其最著名的食物制成。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.12',
@@ -329,7 +390,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7GOJ7WW4AAEsNE?format=jpg&name=small',
     prompt: "Style: Miniature 3D cartoon, minimal textures, realistic lighting. View: Orthographic/Side view. Labels: Height in meters and year built below each base. Subject: Miniature 3D cartoon view of the city's 3 tallest buildings arranged by height.",
     promptZh: "风格：微缩 3D 卡通，极简纹理，写实光照。视角：正交/侧视图。标签：每个底座下方标注高度（米）和建造年份。主体：按高度排列的城市 3 座最高建筑的微缩 3D 卡通视图。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.13',
@@ -340,7 +403,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7MEwTWWEAA1DkO?format=jpg&name=medium',
     prompt: "Style: 3D Isometric illustration. Vibe: Rounded, polished, playful. Subject: 3D isometric colored illustration of a home office with a bichon frise and 3 monitors.",
     promptZh: "风格：3D 等距插图。氛围：圆润、抛光、俏皮。主体：带有卷毛比熊犬和 3 台显示器的家庭办公室 3D 等距彩色插图。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.14',
@@ -351,7 +416,9 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7PmjRBXgAAVKXd?format=jpg&name=medium',
     prompt: "Style: Google Emoji Design. Flat, colorful, vector-like. Subject: Combine these emojis: 🍌 + 😎, on a white background.",
     promptZh: "风格：Google Emoji 设计。扁平、多彩、矢量感。主体：组合这些表情符号：🍌 + 😎，在白色背景上。",
-    requiresImage: false
+    requiresImage: false,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
   },
   {
     id: '2.15',
@@ -362,6 +429,323 @@ export const PROMPT_EXAMPLES: PromptExample[] = [
     imageSrc: 'https://pbs.twimg.com/media/G7OpzpjbAAArAAS?format=jpg&name=900x900',
     prompt: "Effect: Torn-paper reveal. Interior Style: Line-art / Sketch. Preserve: Character identity, pose, outfit (outside tear). Subject: Edit image: add widened torn-paper layered effect across chest and lower abdomen.",
     promptZh: "效果：撕纸揭示。内部风格：线条艺术/素描。保留：角色身份、姿势、服装（撕口外）。主体：编辑图片：在胸部和下腹部添加加宽的撕纸分层效果。",
-    requiresImage: true
+    requiresImage: true,
+    category: "Creative Experiments",
+    categoryZh: "创意实验"
+  },
+
+  // --- 3. Education & Knowledge ---
+  {
+    id: '3.1',
+    title: 'Concept Visualization',
+    titleZh: '概念可视化（文字转信息图）',
+    description: 'Converts textual concepts into clear, educational vector illustrations.',
+    descriptionZh: '将文本概念转化为清晰的教育矢量插图。',
+    imageSrc: 'https://github.com/user-attachments/assets/bfaee21b-d6da-4345-9340-e786ce07dbed',
+    prompt: "Create an educational infographic explaining [Photosynthesis] . Visual Elements : Illustrate the key components: The Sun, a green Plant, Water (H2O) entering roots, Carbon Dioxide (CO2) entering leaves, and Oxygen (O2) being released. Style : Clean, flat vector illustration suitable for a high school science textbook. Use arrows to show the flow of energy and matter. Labels : Label each element clearly in English .",
+    promptZh: "生成[光合作用]的教育信息图。视觉元素：太阳、植物、水入根、CO2入叶、O2释放。风格：适合高中课本的扁平矢量插图，用箭头显示流动。标签：用简体中文清晰标注。",
+    requiresImage: false,
+    category: "Education & Knowledge",
+    categoryZh: "教育与知识"
+  },
+  {
+    id: '3.2',
+    title: 'Kids\' Crayon Travel Journal',
+    titleZh: '儿童蜡笔旅行手账',
+    description: 'Generate a childlike travel journal illustration for a city.',
+    descriptionZh: '为城市生成充满童趣的旅行手账插画。',
+    imageSrc: 'https://pbs.twimg.com/media/G69WHFDW4AAv0TK?format=jpg&name=medium',
+    prompt: "Create a vibrant, child-like crayon-style vertical (9:16) illustration titled '{City Name} Travel Journal.' The artwork should look as if it were drawn by a curious child using colorful crayons. Main Scene: Travel-Journal Style Route Map in center with winding route. Surrounding Playful Elements: Adorable travel characters, Q-style hand-drawn iconic landmarks, funny signboards, cute icons of local foods. Text: Cute handwritten font.",
+    promptZh: "创作一幅名为“{城市名称}旅行手账”的充满活力、童趣的蜡笔风格垂直（9:16）插画。主场景：中间是旅行手账风格的路线图，蜿蜒曲折。周围元素：可爱的旅行角色，Q版手绘地标，有趣的招牌，当地美食的可爱图标。文字：可爱的各种手写字体。",
+    requiresImage: false,
+    category: "Education & Knowledge",
+    categoryZh: "教育与知识"
+  },
+  {
+    id: '3.3',
+    title: 'Financial Sankey Diagram',
+    titleZh: '财务桑基图',
+    description: 'Create a professional financial Sankey diagram.',
+    descriptionZh: '创建专业的财务桑基图。',
+    imageSrc: 'https://pbs.twimg.com/media/G7P3UgNaYAAd1HN?format=jpg&name=medium',
+    prompt: "[Subject]: A professional financial Sankey diagram visualizing the Income Statement of a major corporation, in the style of 'App Economy Insights' and US corporate financial reports. [Visual Style]: High-fidelity vector infographic, clean minimalist aesthetic, flat design. [Composition]: Horizontal flow from Left (Revenue Sources) to Right (Net Profit). [Details]: High resolution, 4k, sharp typography.",
+    promptZh: "[主题]：可视化大公司损益表的专业财务桑基图，风格类似“App Economy Insights”和美国企业财务报告。[视觉风格]：高保真矢量信息图，干净极简美学，扁平化设计。[构图]：从左（收入来源）到右（净利润）的水平流向。[细节]：高分辨率，4k，清晰的排版。",
+    requiresImage: false,
+    category: "Education & Knowledge",
+    categoryZh: "教育与知识"
+  },
+
+  // --- 4. E-commerce & Virtual Studio ---
+  {
+    id: '4.1',
+    title: 'Virtual Model Try-On',
+    titleZh: '虚拟模特试穿',
+    description: 'Dresses a model in a specific garment while preserving fabric texture.',
+    descriptionZh: '为模特穿上特定服装，同时保留面料质感。',
+    imageSrc: 'https://github.com/user-attachments/assets/81eaafb6-901b-424d-a197-dc1bc0bfc5bf',
+    prompt: "Using Image 1 (the garment) and Image 2 (the model), create a hyper-realistic full-body fashion photo where the model is wearing the garment. Crucial Fit Details : The [T-shirt/Jacket] must drape naturally on the model's body, conforming to their posture and creating realistic folds and wrinkles . High-Fidelity Preservation : Preserve the original fabric texture, color, and any logos from Image 1 with extreme accuracy. Seamless Integration : Blend the garment into Image 2 by perfectly matching the ambient lighting, color temperature, and shadow direction . Photography Style : Clean e-commerce lookbook, shot on a Canon EOS R5 with a 50mm f/1.8 lens for a natural, professional look.",
+    promptZh: "使用图1（服装）和图2（模特），创建一张超写实的全身时尚照片，模特穿着该服装。关键细节：服装必须自然垂坠在模特身上，符合体态，产生真实的褶皱。高保真保留：极其精准地保留图1的原始面料纹理、颜色和Logo。无缝融合：通过完美匹配环境光、色温和阴影方向，将服装融入图2。摄影风格：干净的电商Lookbook，Canon EOS R5 拍摄，50mm f/1.8 镜头。",
+    requiresImage: true,
+    category: "E-commerce & Virtual Studio",
+    categoryZh: "电商与虚拟影棚"
+  },
+  {
+    id: '4.2',
+    title: 'Pro Product Photography',
+    titleZh: '专业产品摄影',
+    description: 'Isolates products and places them in a high-end commercial studio.',
+    descriptionZh: '提取产品并将其放置在高端商业摄影棚环境中。',
+    imageSrc: 'https://github.com/user-attachments/assets/cdfd4934-d06a-48ee-bf28-58ce16c458c1',
+    prompt: "Identify the main product in the uploaded photo (automatically removing any hands holding it or messy background details). Recreate it as a premium e-commerce product shot . Subject Isolation : Cleanly extract the product, completely removing any fingers, hands, or clutter . Background : Place the product on a pure white studio background (RGB 255, 255, 255) with a subtle, natural contact shadow at the base to ground it. Lighting : Use soft, commercial studio lighting to highlight the product's texture and material. Ensure even illumination with no harsh glare. Retouching : Automatically fix any lens distortion, improve sharpness, and color-correct to make the product look brand new and professional .",
+    promptZh: "识别上传照片中的主要产品（自动移除手持或杂乱背景）。将其重新创作为高级电商产品拍摄。主体隔离：干净地提取产品，完全移除手指、手或杂物。背景：将产品放置在纯白影棚背景（RGB 255, 255, 255）上，底部带有微妙自然的接触阴影。光线：使用柔和的商业影棚光来突出产品的质感和材质。确保照明均匀，无刺眼眩光。修图：自动修复镜头畸变，提高清晰度，校正颜色，使产品看起来全新且专业。",
+    requiresImage: true,
+    category: "E-commerce & Virtual Studio",
+    categoryZh: "电商与虚拟影棚"
+  },
+  {
+    id: '4.3',
+    title: '3D Chibi Brand Store',
+    titleZh: '3D Q版品牌微缩店',
+    description: 'Create a miniature 3D store for a brand.',
+    descriptionZh: '为品牌创建一个微缩 3D 商店。',
+    imageSrc: 'https://pbs.twimg.com/media/G7BWvI8X0AApeZB?format=jpg&name=900x900',
+    prompt: "3D chibi-style miniature concept store of {Brand Name}, creatively designed with an exterior inspired by the brand's most iconic product or packaging (such as a giant {brand's core product}). The store features two floors with large glass windows clearly showcasing the cozy and finely decorated interior. Adorable tiny figures stroll or sit along the street. Rendered in a miniature cityscape style using Cinema 4D, with a blind-box toy aesthetic.",
+    promptZh: "3D Q版微缩概念店，品牌为 {Brand Name}，外观设计灵感来自该品牌最具标志性的产品或包装（例如巨大的{核心产品}）。商店有两层，带有大玻璃窗，清晰展示舒适精致的室内装饰。可爱的微小人物在街上漫步或坐着。使用 Cinema 4D 渲染的微缩城市景观风格，具有盲盒玩具美学。",
+    requiresImage: false,
+    category: "E-commerce & Virtual Studio",
+    categoryZh: "电商与虚拟影棚"
+  },
+  {
+    id: '4.4',
+    title: 'Room Furnishing',
+    titleZh: '房间布置可视化',
+    description: 'Visualize how furniture would look in an empty room.',
+    descriptionZh: '可视化家具在空房间里的样子。',
+    imageSrc: 'https://github.com/user-attachments/assets/082f8bab-b098-4196-adf9-c6007a4b7006',
+    prompt: "Show me how this room would look with furniture in it",
+    promptZh: "展示这间房间摆放家具后的样子",
+    requiresImage: true,
+    category: "E-commerce & Virtual Studio",
+    categoryZh: "电商与虚拟影棚"
+  },
+
+  // --- 5. Workplace & Productivity ---
+  {
+    id: '5.1',
+    title: 'Flowchart Conversion',
+    titleZh: '手绘流程图转专业图表',
+    description: 'Converts whiteboard sketches into clear vector presentations.',
+    descriptionZh: '将白板草图转换为清晰的矢量演示图。',
+    imageSrc: 'https://github.com/user-attachments/assets/c59d3272-7525-4be0-94e3-8d642baaa659',
+    prompt: "Convert this hand-drawn whiteboard sketch into a professional corporate flowchart suitable for a business presentation. Style Guide : Use a minimalist 'McKinsey-style' aesthetic : clean lines, ample whitespace, and a sophisticated blue-and-gray color palette. Structure : Automatically align all boxes and diamonds to a strict grid . Connect them with straight, orthogonal arrows. Text : Transcribe the handwritten labels into a clear, bold Sans-Serif font.",
+    promptZh: "将此手绘白板草图转换为适合商务演示的专业企业流程图。风格指南：使用极简主义的“麦肯锡风格”美学：线条简洁，留白充足，精致的蓝灰色调。结构：自动将所有方框和菱形对齐到严格的网格。用直的、正交的箭头连接它们。文字：将手写标签转录为清晰、粗体的无衬线字体。",
+    requiresImage: true,
+    category: "Workplace & Productivity",
+    categoryZh: "职场与生产力"
+  },
+  {
+    id: '5.2',
+    title: 'UI Sketch to Prototype',
+    titleZh: 'UI 草图转高保真原型',
+    description: 'Transforms wireframe scribbles into realistic mobile app mockups.',
+    descriptionZh: '将线框涂鸦转换为逼真的移动应用模型。',
+    imageSrc: 'https://github.com/user-attachments/assets/67690896-22f8-4abc-8e89-d4779233a7ad',
+    prompt: "Transform this rough wireframe sketch into a high-fidelity UI design mockups for a mobile app. Design System : Apply a modern, clean aesthetics similar to iOS 18 or Material Design 3 . Use rounded corners, soft drop shadows, and a vibrant primary color. Components : Intelligently interpret the sketch: turn scribbles into high-quality placeholder images , convert rough rectangles into proper buttons with gradients , and turn lines into realistic text blocks . Layout : Ensure perfect padding and consistent spacing. Context : Place the design inside a realistic iPhone 16 frame mockups.",
+    promptZh: "将此粗略的线框草图转换为移动应用的高保真 UI 设计模型。设计系统：应用类似于 iOS 18 或 Material Design 3 的现代、简洁美学。使用圆角、柔和的阴影和鲜艳的主色。组件：智能解释草图：将涂鸦变成高质量的占位图，将粗略的矩形变成带有渐变的按钮，将线条变成逼真的文本块。布局：确保完美的填充和一致的间距。语境：将设计放置在逼真的 iPhone 16 边框模型中。",
+    requiresImage: true,
+    category: "Workplace & Productivity",
+    categoryZh: "职场与生产力"
+  },
+  {
+    id: '5.3',
+    title: 'Magazine Layout Generator',
+    titleZh: '杂志排版生成器',
+    description: 'Visualizing articles in print format with complex typography.',
+    descriptionZh: '以复杂的排版可视化印刷格式的文章。',
+    imageSrc: 'https://github.com/user-attachments/assets/5982a68e-8c7d-4c7c-a07e-2a4a0a74770d',
+    prompt: "Put this whole text, verbatim, into a photo of a glossy magazine article on a desk, with photos, beautiful typography design, pull quotes and brave formatting.",
+    promptZh: "将这段文字逐字放入一张桌子上的光面杂志文章照片中，配上图片、精美的排版设计、引语和大胆的格式。",
+    requiresImage: false,
+    category: "Workplace & Productivity",
+    categoryZh: "职场与生产力"
+  },
+
+  // --- 6. Photo Editing & Restoration ---
+  {
+    id: '6.1',
+    title: 'Smart Outpainting',
+    titleZh: '智能外绘（构图拯救）',
+    description: 'Expands image ratios by intelligently generating matching scenery.',
+    descriptionZh: '通过智能生成匹配的风景来扩展图像比例。',
+    imageSrc: 'https://github.com/user-attachments/assets/cc8c4e87-fe0f-4b8a-a610-a6d55ed0294c',
+    prompt: "Zoom out and expand this image to a 16:9 aspect ratio (computer wallpaper size). Context Awareness : Seamlessly extend the scenery on both left and right sides. Match the original lighting, weather, and texture perfectly. Logical Completion : If there are cut-off objects (like a shoulder, a tree branch, or a building edge) on the borders, complete them naturally based on logical inference. Do not distort the original center image.",
+    promptZh: "缩小并将此图像扩展为 16:9 的纵横比（电脑壁纸尺寸）。情境感知：无缝扩展左右两侧的风景。完美匹配原始光线、天气和纹理。逻辑补全：如果边界上有被切断的物体（如肩膀、树枝或建筑物边缘），请根据逻辑推理自然地补全它们。不要扭曲原始中心图像。",
+    requiresImage: true,
+    category: "Photo Editing & Restoration",
+    categoryZh: "照片编辑与修复"
+  },
+  {
+    id: '6.2',
+    title: 'Smart Crowd Removal',
+    titleZh: '智能路人移除',
+    description: 'Removes unwanted people from backgrounds.',
+    descriptionZh: '移除背景中不需要的人。',
+    imageSrc: 'https://github.com/user-attachments/assets/bade2fb0-f7d8-4435-91d4-ad0b41819c9b',
+    prompt: "Remove all the tourists/people in the background behind the main subject. Intelligent Fill : Replace them with realistic background elements that logically fit the scene (e.g., extend the cobblestone pavement, empty park benches, or grass textures). Consistency : Ensure no blurry artifacts or 'smudges' remain. The filled area must have the same grain, focus depth, and lighting as the rest of the photo.",
+    promptZh: "移除主体背景中的所有游客/行人。智能填充：用逻辑上符合场景的逼真背景元素（如延伸鹅卵石路面、空的长椅或草地纹理）替换他们。一致性：确保不残留模糊的伪影或“污迹”。填充区域必须具有与照片其余部分相同的颗粒感、景深和光线。",
+    requiresImage: true,
+    category: "Photo Editing & Restoration",
+    categoryZh: "照片编辑与修复"
+  },
+  {
+    id: '6.3',
+    title: 'CCTV Simulation',
+    titleZh: '监控摄像头模拟',
+    description: 'Create a high angle CCTV surveillance shot with face detection.',
+    descriptionZh: '创建带有面部检测的高角度 CCTV 监控镜头。',
+    imageSrc: 'https://pbs.twimg.com/media/G673aBCWUAAFUGn?format=jpg&name=900x900',
+    prompt: "Create a high angle CCTV surveillance shot using the uploaded image as the source. Detect every visible person in the image and automatically draw a white rectangular bounding box around each face. For the most prominent person, add a large zoom in inset: a sharp, enhanced close-up of their face displayed in a floating rectangular frame connected with a thin white line. Keep the main image slightly noisy and security camera like (soft grain, slight distortion, muted colors).",
+    promptZh: "使用上传的图片作为源，创建一个高角度 CCTV 监控镜头。检测图像中每个可见的人，并自动在每张脸周围绘制一个白色矩形边界框。对于最突出的人，添加一个大的放大插图：在通过细白线连接的浮动矩形框中显示其面部的清晰、增强特写。保持主图像略带噪点和类似监控摄像头的效果（柔和颗粒、轻微失真、柔和色彩）。",
+    requiresImage: true,
+    category: "Photo Editing & Restoration",
+    categoryZh: "照片编辑与修复"
+  },
+
+  // --- 7. Interior Design ---
+  {
+    id: '7.1',
+    title: 'Interior Design Board',
+    titleZh: '室内设计展板',
+    description: 'Generates a complete design presentation board from a 2D map.',
+    descriptionZh: '根据 2D 平面图生成完整的设计演示板。',
+    imageSrc: 'https://github.com/user-attachments/assets/cf6d0304-60b6-4262-b4a1-08571f2c491e',
+    prompt: "Based on the uploaded 2D floor plan, generate a professional interior design presentation board in a single image. Layout : The final image should be a collage with one large main image at the top (perspective view of living area), and several smaller images below it (Bedroom, Home Office, 3D top-down floor plan). Overall Style : Apply a consistent Modern Minimalist style with warm oak wood flooring and off-white walls across ALL images. Quality : Photorealistic rendering, soft natural lighting.",
+    promptZh: "根据上传的 2D 平面图，在一张图片中生成专业的室内设计演示板。布局：最终图像应为拼贴画，顶部是一张大的主图（起居区的透视图），下方是几张较小的图（卧室、家庭办公室、3D 俯视平面图）。整体风格：在所有图像中应用一致的现代极简主义风格，搭配暖色橡木地板和米白色墙壁。质量：照片级渲染，柔和的自然光。",
+    requiresImage: true,
+    category: "Interior Design",
+    categoryZh: "室内设计"
+  },
+
+  // --- 8. Social Media & Marketing ---
+  {
+    id: '8.1',
+    title: 'Viral Cover Image',
+    titleZh: '爆款视频封面',
+    description: 'Creates engaging thumbnails with text overlays.',
+    descriptionZh: '创建带有文字叠加的引人注目的缩略图。',
+    imageSrc: 'https://github.com/user-attachments/assets/21b0d56c-a2a5-463a-9a0e-84100e9d08d8',
+    prompt: "Design a viral video thumbnail using the person from Image 1. Face Consistency : Keep the person's facial features exactly the same as Image 1 , but change their expression to look excited and surprised . Action : Pose the person on the left side, pointing their finger towards the right side of the frame. Subject : On the right side, place a high-quality image of [a delicious avocado toast]. Graphics : Add a bold yellow arrow connecting the person's finger to the toast. Text : Overlay massive, pop-style text in the middle: '3分钟搞定!' (Done in 3 mins!). Background : A blurred, bright kitchen background.",
+    promptZh: "使用图 1 中的人物设计一个爆款视频缩略图。面部一致性：保持人物的面部特征与图 1 完全相同，但将表情改为兴奋和惊讶。动作：将人物摆在左侧，手指向画面右侧。主体：在右侧放置一张[美味牛油果吐司]的高质量图片。图形：添加一个粗体黄色箭头，连接人物的手指和吐司。文字：在中间叠加巨大的流行风格文字：“3分钟搞定！”。背景：模糊、明亮的厨房背景。",
+    requiresImage: true,
+    category: "Social Media & Marketing",
+    categoryZh: "社交媒体与营销"
+  },
+  {
+    id: '8.2',
+    title: 'Commercial Poster',
+    titleZh: '商业促销海报',
+    description: 'Designs professional sales posters.',
+    descriptionZh: '设计专业的销售海报。',
+    imageSrc: 'https://github.com/user-attachments/assets/b65a064a-8519-4907-9497-90f00f9dba17',
+    prompt: "Design a professional promotional poster for a [Coffee Shop]. Composition : A cinematic close-up of a steaming cup of cappuccino on a rustic wooden table, autumn leaves in the background (cozy atmosphere). Text Integration : 1. Main Title : 'Autumn Special' written in elegant, gold serif typography at the top. 2. Offer : 'Buy One Get One Free' clearly displayed in a modern badge or sticker style on the side. 3. Footer : 'Limited Time Only' in small, clean text at the bottom.",
+    promptZh: "为[咖啡店]设计一张专业的促销海报。构图：热气腾腾的卡布奇诺特写，放在质朴的木桌上，背景是秋叶（舒适的氛围）。文字整合：1. 主标题：顶部优雅的金色衬线字体写着“秋季特惠”。2. 优惠：侧面以现代徽章或贴纸风格清晰显示“买一送一”。3. 页脚：底部用小而清晰的文字写着“限时优惠”。",
+    requiresImage: false,
+    category: "Social Media & Marketing",
+    categoryZh: "社交媒体与营销"
+  },
+
+  // --- 9. Daily Life & Translation ---
+  {
+    id: '9.1',
+    title: 'Store/Menu Translation',
+    titleZh: '实体店/菜单翻译',
+    description: 'Translates menus or signs while preserving texture.',
+    descriptionZh: '翻译菜单或标志，同时保留原有质感。',
+    imageSrc: 'https://github.com/user-attachments/assets/46c82371-4f9d-431c-9a11-65f51862a792',
+    prompt: "Translate the Chinese dish names on the wall menu into English for foreign tourists. Texture Preservation : Crucial! Maintain the original aged, greasy, and textured look of the wall/paper. The new English text should look like it was written/printed on the same surface, with slight fading or wear to match. Currency : Keep the '¥' symbol and price numbers exactly as they are. Layout : align the English translations next to or replacing the Chinese characters naturally.",
+    promptZh: "将墙上菜单上的中文菜名翻译成英文，供外国游客阅读。质感保留：至关重要！保持墙壁/纸张原有的陈旧、油腻和纹理外观。新的英文文本应看起来像是书写/印刷在同一表面上，并带有轻微的褪色或磨损以匹配。货币：保留“¥”符号和价格数字不变。布局：将英文翻译自然地对齐在中文旁边或替换中文。",
+    requiresImage: true,
+    category: "Daily Life & Translation",
+    categoryZh: "日常生活与翻译"
+  },
+  {
+    id: '9.2',
+    title: 'Content Localization',
+    titleZh: '数字内容本地化',
+    description: 'Translates comics or memes.',
+    descriptionZh: '翻译漫画或梗图。',
+    imageSrc: 'https://github.com/user-attachments/assets/2cb58cf3-c05f-45d0-9f04-67fd7ba00267',
+    prompt: "Translate the text in the speech bubbles/captions from [Japanese/English] to [Chinese]. Seamless Cleaning : Erase the original text and perfectly fill the background. Style Matching : Render the translated Chinese text using a casual, handwritten-style font (or bold impact font for memes) that matches the aesthetic of the original image. Fit : Ensure the text fits naturally within the bubbles without overcrowding.",
+    promptZh: "将对话气泡/字幕中的文本从[日文/英文]翻译成[中文]。无缝清除：擦除原始文本并完美填充背景。风格匹配：使用与原始图像美学相匹配的随意手写风格字体（或用于梗图的粗体 Impact 字体）渲染翻译后的中文文本。适应：确保文本自然地适应气泡，不会过度拥挤。",
+    requiresImage: true,
+    category: "Daily Life & Translation",
+    categoryZh: "日常生活与翻译"
+  },
+
+  // --- 10. Social Networking & Avatars ---
+  {
+    id: '10.1',
+    title: '3D Blind Box Avatar',
+    titleZh: '3D 盲盒风格头像',
+    description: 'Converts portraits into cute 3D characters.',
+    descriptionZh: '将肖像转换为可爱的 3D 角色。',
+    imageSrc: 'https://github.com/user-attachments/assets/da445a7e-cf15-44be-ad18-d66b8fb78ae8',
+    prompt: "Transform the person in the uploaded photo into a cute 3D Pop Mart style blind box character . Likeness : Keep key features recognizable: [hair color, glasses, hairstyle]. Style : C4D rendering, occlusion render, cute Q-version , soft studio lighting, pastel colors. Background : A simple, solid matte color background (e.g., soft blue). Detail : The character should have a smooth, plastic toy texture with a slight glossy finish.",
+    promptZh: "将上传照片中的人变成可爱的 3D Pop Mart 风格盲盒角色。相似度：保持关键特征可识别：[发色、眼镜、发型]。风格：C4D 渲染，环境光遮蔽渲染，可爱的 Q 版，柔和的影棚光，柔和的色彩。背景：简单、纯色哑光背景（例如柔和的蓝色）。细节：角色应具有光滑的塑料玩具质感，并带有轻微的光泽。",
+    requiresImage: true,
+    category: "Social Networking & Avatars",
+    categoryZh: "社交与头像"
+  },
+  {
+    id: '10.2',
+    title: 'Pet Meme Creation',
+    titleZh: '宠物表情包创作',
+    description: 'Turns pet photos into funny stickers.',
+    descriptionZh: '将宠物照片变成有趣的表情包贴纸。',
+    imageSrc: 'https://github.com/user-attachments/assets/9fc5866a-e62e-43b9-af83-8fa5f6421d33',
+    prompt: "Turn this photo of my [cat/dog] into a funny hand-drawn WeChat sticker . Style : Minimalist ugly-cute line drawing (doodle style). White background. Expression : Exaggerate the animal's expression to look extremely shocked/judgemental/lazy. Accessories : Add cute little doodles like sweat drops, question marks, or sparkles. Text : Add handwritten text at the bottom: 'So Dumb'.",
+    promptZh: "把我的[猫/狗]的照片变成有趣的微信手绘表情包。风格：极简的丑萌线条画（涂鸦风格）。白色背景。表情：夸大动物的表情，看起来极其震惊/鄙视/懒惰。配饰：添加可爱的小涂鸦，如汗珠、问号或闪光。文字：在底部添加手写文字：“真蠢”。",
+    requiresImage: true,
+    category: "Social Networking & Avatars",
+    categoryZh: "社交与头像"
+  },
+  {
+    id: '10.3',
+    title: 'Y2K Scrapbook Poster',
+    titleZh: 'Y2K 剪贴簿海报',
+    description: 'Create a Y2K-style scrapbook poster with multiple poses.',
+    descriptionZh: '创作一张包含多种姿势的 Y2K 风格剪贴簿海报。',
+    imageSrc: 'https://pbs.twimg.com/media/G7JduAQa8AEofUY?format=jpg&name=large',
+    prompt: "Colorful Y2K scrapbook poster aesthetic, vibrant stickers, multiple subjects wearing the same outfit and hairstyle with different poses and cutouts, colorful strokes and lines, frameless collage style. Includes: close-up shot with heart-shape fingers, full-body squatting pose supporting chin while holding a white polaroid camera, mid-shot touching cheek while blowing pink bubblegum. Holographic textures, pastel gradients, glitter accents, playful doodles.",
+    promptZh: "多彩的 Y2K 剪贴簿海报美学，充满活力的贴纸，穿着相同服装和发型的多个主体，不同的姿势和剪纸，多彩的笔触和线条，无框拼贴风格。包括：手指比心的特写镜头，手托下巴拿着白色宝丽来相机的全身蹲姿，吹着粉色泡泡糖摸脸的中景镜头。全息纹理，柔和渐变，闪光点缀，俏皮涂鸦。",
+    requiresImage: true,
+    category: "Social Networking & Avatars",
+    categoryZh: "社交与头像"
+  },
+  {
+    id: '10.4',
+    title: 'Japanese Snap Photo',
+    titleZh: '日系高中生抓拍',
+    description: 'Create a snapshot in the style of a Japanese high school student.',
+    descriptionZh: '创作一张日本高中生风格的抓拍照片。',
+    imageSrc: 'https://pbs.twimg.com/media/G6z7gUVa0AMf1-G?format=jpg&name=small',
+    prompt: "A daily snapshot taken with a low-quality disposable camera. A clumsy photo taken by a Japanese high school student. (Aspect ratio 3:2 is recommended)",
+    promptZh: "用低质量一次性相机拍摄的日常抓拍。日本高中生拍摄的一张笨拙的照片。（推荐 3:2 纵横比）",
+    requiresImage: false,
+    category: "Social Networking & Avatars",
+    categoryZh: "社交与头像"
+  },
+  {
+    id: '10.5',
+    title: 'AI Skin Analysis',
+    titleZh: 'AI 皮肤分析',
+    description: 'Analyze skin and provide routine recommendations.',
+    descriptionZh: '分析皮肤并提供护理建议。',
+    imageSrc: 'https://pbs.twimg.com/media/G7QJQpOXEAAqAP1?format=jpg&name=large',
+    prompt: "You are a professional skin analyst. Inspect the skin: shine, pores, redness, blemishes, etc. Decide skin type. Identify visible issues. Provide a SKIN ROUTINE with 5 numbered steps (Cleanser, Treatment, Moisturizer, etc) including product type and key ingredients. Focus on over-the-counter products.",
+    promptZh: "你是一名专业的皮肤分析师。检查皮肤：油光、毛孔、发红、瑕疵等。确定皮肤类型。识别可见问题。提供一个包含 5 个编号步骤的护肤流程（洁面、治疗、保湿等），包括产品类型和关键成分。专注于非处方产品。",
+    requiresImage: true,
+    category: "Social Networking & Avatars",
+    categoryZh: "社交与头像"
   }
 ];

@@ -79,6 +79,7 @@ export const translations = {
     tryStyle: "Try This Style",
     requiresImage: "Requires an image",
     uploadImageFirst: "Please upload an image first to use this style.",
+    allCategories: "All Categories",
   },
   zh: {
     appTitle: "NanoLayer",
@@ -157,6 +158,7 @@ export const translations = {
     tryStyle: "做同款 / 尝试风格",
     requiresImage: "需要上传图片",
     uploadImageFirst: "请先上传一张图片，然后才能使用此风格。",
+    allCategories: "全部",
   }
 };
 
