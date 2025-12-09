@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layer, ToolMode, Language, SelectionRect } from '../types';
 import { t } from '../utils/i18n';
 
@@ -39,6 +39,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
 }) => {
   const [prompt, setPrompt] = useState('');
   const [showRefLayerPicker, setShowRefLayerPicker] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Sync external prompt when it changes (e.g. reused from history)
   useEffect(() => {
@@ -47,14 +48,29 @@ const PromptBar: React.FC<PromptBarProps> = ({
       }
   }, [externalPrompt]);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        const scrollHeight = textareaRef.current.scrollHeight;
+        // Limit max height to ~160px (approx 7-8 lines)
+        textareaRef.current.style.height = `${Math.min(scrollHeight, 160)}px`;
+    }
+  }, [prompt]);
+
   const handleGenerate = () => {
     if (!prompt.trim()) return;
     onGenerate(prompt);
     setPrompt('');
+    // Reset height manually after send
+    if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleGenerate();
     }
   };
@@ -93,16 +109,16 @@ const PromptBar: React.FC<PromptBarProps> = ({
             </div>
         )}
 
-        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700 p-2 rounded-2xl shadow-2xl shadow-black/50 flex items-center gap-2 relative">
+        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700 p-2 rounded-2xl shadow-2xl shadow-black/50 flex items-end gap-2 relative">
             {/* Mode Icon */}
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'bg-blue-600' : 'bg-purple-600'}`}>
+            <div className={`w-8 h-8 mb-0.5 rounded-full flex items-center justify-center shrink-0 ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'bg-blue-600' : 'bg-purple-600'}`}>
                 <i className={`fa-solid ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'fa-wand-magic-sparkles' : 'fa-magnifying-glass'} text-white text-xs`}></i>
             </div>
             
             {/* Gallery Button */}
             <button 
                 onClick={onOpenGallery}
-                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-slate-800 text-blue-400 hover:bg-blue-600 hover:text-white transition-all border border-slate-600 hover:border-blue-500"
+                className="w-8 h-8 mb-0.5 rounded-full flex items-center justify-center shrink-0 bg-slate-800 text-blue-400 hover:bg-blue-600 hover:text-white transition-all border border-slate-600 hover:border-blue-500"
                 title={t(lang, 'browseGallery')}
             >
                 <i className="fa-solid fa-book-open text-xs"></i>
@@ -111,25 +127,25 @@ const PromptBar: React.FC<PromptBarProps> = ({
             {/* Reference Picker Button */}
             <button 
                 onClick={() => setShowRefLayerPicker(!showRefLayerPicker)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all border border-transparent ${referenceLayerId ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white border-slate-600 hover:border-slate-500'}`}
+                className={`w-8 h-8 mb-0.5 rounded-full flex items-center justify-center shrink-0 transition-all border border-transparent ${referenceLayerId ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white border-slate-600 hover:border-slate-500'}`}
                 title={t(lang, 'refLayerTitle')}
             >
                 <i className="fa-regular fa-image text-xs"></i>
             </button>
             
             {/* Input Wrapper */}
-            <div className="flex-1 flex items-center gap-2 bg-slate-800/50 rounded-lg px-2 h-9 border border-transparent focus-within:border-slate-600 focus-within:bg-slate-800 transition-all">
+            <div className="flex-1 flex items-start gap-2 bg-slate-800/50 rounded-xl px-3 py-2 border border-transparent focus-within:border-slate-600 focus-within:bg-slate-800 transition-all min-h-[44px]">
                 {/* Reference Pill */}
                 {currentRefLayer && (
-                    <div className="flex items-center gap-1 bg-indigo-900/50 text-indigo-200 text-[10px] px-1.5 py-0.5 rounded border border-indigo-500/30 shrink-0 max-w-[100px]">
+                    <div className="mt-0.5 flex items-center gap-1 bg-indigo-900/50 text-indigo-200 text-[10px] px-1.5 py-0.5 rounded border border-indigo-500/30 shrink-0 max-w-[100px]">
                         <img src={currentRefLayer.thumbnail || currentRefLayer.canvas.toDataURL()} className="w-3 h-3 rounded-sm object-cover" alt="" />
                         <span className="truncate">{currentRefLayer.name}</span>
                         <button onClick={() => onSelectRefLayer(null)} className="hover:text-white ml-1"><i className="fa-solid fa-xmark"></i></button>
                     </div>
                 )}
                 
-                <input
-                    type="text"
+                <textarea
+                    ref={textareaRef}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -143,15 +159,17 @@ const PromptBar: React.FC<PromptBarProps> = ({
                                 )
                                 : t(lang, 'promptPlaceholderDefault')
                     }
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-slate-400 h-full min-w-[50px]"
+                    rows={1}
+                    className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-slate-400 min-w-[50px] resize-none overflow-y-auto custom-scrollbar leading-relaxed"
                     disabled={isProcessing}
+                    style={{ height: '24px' }} // Initial height
                 />
             </div>
             
             <button
                 onClick={handleGenerate}
                 disabled={isProcessing || !prompt.trim()}
-                className={`h-9 px-4 rounded-xl text-xs font-bold uppercase tracking-wide transition-all
+                className={`h-9 px-4 rounded-xl text-xs font-bold uppercase tracking-wide transition-all mb-0.5
                     ${isProcessing || !prompt.trim()
                         ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
                         : (mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE

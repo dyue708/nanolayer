@@ -35,6 +35,7 @@ const App: React.FC = () => {
 
   // Gallery State
   const [showGallery, setShowGallery] = useState(false);
+  const pendingPromptRef = useRef<PromptExample | null>(null);
 
   // Settings: API Key & Language
   const [showSettings, setShowSettings] = useState(false);
@@ -436,8 +437,11 @@ const App: React.FC = () => {
       // 1. Check if the example requires an image and we don't have one
       if (example.requiresImage && layers.length === 0) {
           alert(t(language, 'uploadImageFirst'));
+          
+          // Store this prompt as pending so we can apply it after upload
+          pendingPromptRef.current = example;
+          
           fileInputRef.current?.click();
-          // Ideally we would queue this action after upload, but for now we just prompt
           setShowGallery(false);
           return;
       }
@@ -456,6 +460,21 @@ const App: React.FC = () => {
           setShowConfigPanel(true);
       }
 
+  }, [layers, language, handleReusePrompt]);
+
+  // Effect to apply pending prompt after layer upload
+  useEffect(() => {
+      if (layers.length > 0 && pendingPromptRef.current) {
+          const example = pendingPromptRef.current;
+          
+          // Apply prompt logic
+          setSystemInstruction('');
+          const textToUse = (language === 'zh' && example.promptZh) ? example.promptZh : example.prompt;
+          handleReusePrompt(textToUse);
+          
+          // Clear pending
+          pendingPromptRef.current = null;
+      }
   }, [layers, language, handleReusePrompt]);
 
   const exportImage = () => {
