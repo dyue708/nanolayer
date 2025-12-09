@@ -42,8 +42,8 @@ const PromptGallery: React.FC<PromptGalleryProps> = ({ isOpen, onClose, onSelect
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-fade-in">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full h-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-fade-in">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full h-full max-w-7xl max-h-[85dvh] flex flex-col overflow-hidden">
         
         {/* Header */}
         <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-850 shrink-0">
@@ -77,7 +77,7 @@ const PromptGallery: React.FC<PromptGalleryProps> = ({ isOpen, onClose, onSelect
         </div>
 
         {/* Grid Content */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 bg-slate-950/50 custom-scrollbar scroll-smooth">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 bg-slate-950/50 custom-scrollbar scroll-smooth pb-12">
           <div className="space-y-10">
             {categories.map(category => (
                 <div key={category} id={`cat-${category}`} className="scroll-mt-20">

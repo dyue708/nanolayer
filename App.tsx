@@ -12,6 +12,8 @@ import { generateContentWithGemini, analyzeImageWithGemini } from './services/ge
 import { t } from './utils/i18n';
 import { PromptExample } from './utils/promptExamples';
 
+type MobilePanel = 'none' | 'layers' | 'config' | 'tools';
+
 const App: React.FC = () => {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
@@ -44,6 +46,9 @@ const App: React.FC = () => {
   
   // Prompt Reuse State
   const [reusedPrompt, setReusedPrompt] = useState<string | undefined>(undefined);
+
+  // Mobile State
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
 
   // Load Settings from LocalStorage on mount
   useEffect(() => {
@@ -520,6 +525,10 @@ const App: React.FC = () => {
     }
   };
 
+  const toggleMobilePanel = (panel: MobilePanel) => {
+      setMobilePanel(prev => prev === panel ? 'none' : panel);
+  };
+
   const availableRefLayers = activeLayerId 
     ? layers.filter(l => l.id !== activeLayerId) 
     : layers;
@@ -534,16 +543,17 @@ const App: React.FC = () => {
   const totalCost = layers.reduce((acc, layer) => acc + (layer.cost || 0), 0);
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-200 font-sans selection:bg-blue-500 selection:text-white">
+    <div className="flex flex-col h-[100dvh] bg-slate-950 text-slate-200 font-sans selection:bg-blue-500 selection:text-white overflow-hidden">
       {/* Top Bar */}
-      <header className="h-14 bg-slate-900 border-b border-slate-700 flex items-center justify-between px-4 shrink-0 z-10">
+      <header className="h-14 bg-slate-900 border-b border-slate-700 flex items-center justify-between px-4 shrink-0 z-20 relative">
         <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center text-slate-900 font-bold shadow-lg shadow-orange-500/20">
+            <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center text-slate-900 font-bold shadow-lg shadow-orange-500/20 shrink-0">
                 <i className="fa-solid fa-layer-group"></i>
             </div>
-            <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">
+            <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400 hidden sm:block">
                 {t(language, 'appTitle')} <span className="font-light opacity-75">{t(language, 'appSubtitle')}</span>
             </h1>
+            <h1 className="text-lg font-bold text-slate-200 sm:hidden">NanoLayer</h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -551,20 +561,29 @@ const App: React.FC = () => {
              <input type="file" ref={addLayerInputRef} onChange={handleAddLayerUpload} accept=".png,.jpg,.jpeg,.webp" className="hidden" />
 
              <button onClick={() => fileInputRef.current?.click()} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2">
-                <i className="fa-solid fa-folder-open"></i> {t(language, 'open')}
+                <i className="fa-solid fa-folder-open"></i> <span className="hidden sm:inline">{t(language, 'open')}</span>
              </button>
-             <div className="h-5 w-px bg-slate-700 mx-1"></div>
-             <button onClick={exportImage} disabled={layers.length === 0} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50">
-                <i className="fa-solid fa-file-image"></i> {t(language, 'exportPng')}
-             </button>
-             <button onClick={handleExportPsd} disabled={layers.length === 0} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50">
-                <i className="fa-solid fa-file-export"></i> {t(language, 'exportPsd')}
+             
+             {/* Desktop Export Buttons */}
+             <div className="hidden md:flex gap-2">
+                <div className="h-5 w-px bg-slate-700 mx-1"></div>
+                <button onClick={exportImage} disabled={layers.length === 0} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50">
+                    <i className="fa-solid fa-file-image"></i> {t(language, 'exportPng')}
+                </button>
+                <button onClick={handleExportPsd} disabled={layers.length === 0} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50">
+                    <i className="fa-solid fa-file-export"></i> {t(language, 'exportPsd')}
+                </button>
+             </div>
+
+             {/* Mobile Export Menu (Using simple logic for now, could be a dropdown) */}
+             <button onClick={exportImage} disabled={layers.length === 0} className="md:hidden bg-slate-800 hover:bg-slate-700 p-2 rounded-md border border-slate-600 disabled:opacity-50">
+                <i className="fa-solid fa-download"></i>
              </button>
 
              <div className="h-5 w-px bg-slate-700 mx-1"></div>
 
              {/* Cost Badge */}
-             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700/50" title={t(language, 'totalCost')}>
+             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700/50" title={t(language, 'totalCost')}>
                 <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t(language, 'totalCost')}</div>
                 <div className="text-sm font-mono text-emerald-400 flex items-center gap-1">
                     <i className="fa-solid fa-coins text-[10px] opacity-70"></i>
@@ -572,23 +591,20 @@ const App: React.FC = () => {
                 </div>
              </div>
 
-             <div className="h-5 w-px bg-slate-700 mx-1"></div>
+             <div className="h-5 w-px bg-slate-700 mx-1 hidden sm:block"></div>
              
              <button onClick={() => setShowSettings(true)} className={`px-2 py-1 transition-colors ${!apiKey ? 'text-orange-400 animate-pulse' : 'text-slate-400 hover:text-white'}`} title={t(language, 'settings')}>
                 <i className="fa-solid fa-gear"></i>
              </button>
-             {apiKey && (
-                 <button onClick={handleLogout} className="px-2 py-1 text-slate-400 hover:text-red-400 transition-colors" title={t(language, 'logout')}>
-                    <i className="fa-solid fa-right-from-bracket"></i>
-                 </button>
-             )}
         </div>
       </header>
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        <div className="flex flex-col z-10">
-            <div className="w-14 bg-slate-900 border-r border-slate-700 flex flex-col items-center py-4 gap-4 h-full hidden md:flex">
+        
+        {/* Desktop Tool Sidebar */}
+        <div className="flex flex-col z-10 hidden md:flex">
+            <div className="w-14 bg-slate-900 border-r border-slate-700 flex flex-col items-center py-4 gap-4 h-full">
                  <button onClick={() => setMode(ToolMode.MOVE)} className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${mode === ToolMode.MOVE ? 'bg-blue-600 text-white shadow-blue-500/30 shadow-lg' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`} title={t(language, 'toolMove')}>
                     <i className="fa-solid fa-arrows-up-down-left-right"></i>
                  </button>
@@ -606,18 +622,28 @@ const App: React.FC = () => {
             </div>
         </div>
 
-        <LayerManager 
-            layers={layers}
-            activeLayerId={activeLayerId}
-            onSelectLayer={handleLayerSelect}
-            onToggleVisibility={handleToggleVisibility}
-            onOpacityChange={handleOpacityChange}
-            onDeleteLayer={handleDeleteLayer}
-            onAddLayer={() => addLayerInputRef.current?.click()}
-            onMoveLayerUp={handleMoveLayerUp}
-            onMoveLayerDown={handleMoveLayerDown}
-            lang={language}
-        />
+        {/* Layers Panel - Desktop & Mobile (Overlay) */}
+        <div className={`
+             ${mobilePanel === 'layers' 
+                ? 'fixed inset-0 z-50 bg-slate-950 flex flex-col' 
+                : 'hidden'
+              } 
+             md:relative md:flex md:z-0 md:bg-transparent md:inset-auto md:w-auto
+        `}>
+             <LayerManager 
+                layers={layers}
+                activeLayerId={activeLayerId}
+                onSelectLayer={handleLayerSelect}
+                onToggleVisibility={handleToggleVisibility}
+                onOpacityChange={handleOpacityChange}
+                onDeleteLayer={handleDeleteLayer}
+                onAddLayer={() => addLayerInputRef.current?.click()}
+                onMoveLayerUp={handleMoveLayerUp}
+                onMoveLayerDown={handleMoveLayerDown}
+                lang={language}
+                onClose={() => setMobilePanel('none')}
+            />
+        </div>
 
         <Workspace 
             width={canvasDims.width} 
@@ -632,56 +658,129 @@ const App: React.FC = () => {
             onOpenGallery={() => setShowGallery(true)}
         />
 
-        {/* Right Side Panel Area */}
-        {showAnalysis ? (
-             <AnalysisPanel 
-                results={analysisResults} 
-                isLoading={isProcessing && mode === ToolMode.ANALYZE} 
-                onClose={() => { setShowAnalysis(false); setShowConfigPanel(true); }} 
-                lang={language} 
-            />
-        ) : (
-            <ConfigPanel 
-                isOpen={showConfigPanel}
-                onToggle={() => setShowConfigPanel(!showConfigPanel)}
-                lang={language}
-                activeLayer={activeLayer}
-                onReusePrompt={handleReusePrompt}
-                selectedModel={selectedModel}
-                onSelectModel={setSelectedModel}
-                systemInstruction={systemInstruction}
-                onSystemInstructionChange={setSystemInstruction}
-                onApplyTemplate={applyTemplate}
-                onOpenGallery={() => setShowGallery(true)}
-                aspectRatio={aspectRatio}
-                onAspectRatioChange={setAspectRatio}
-                resolution={resolution}
-                onResolutionChange={setResolution}
-            />
-        )}
+        {/* Config / Analysis Panel - Desktop & Mobile (Overlay) */}
+        <div className={`
+             ${mobilePanel === 'config' 
+                ? 'fixed inset-0 z-50 bg-slate-950 flex flex-col' 
+                : 'hidden'
+             } 
+             md:relative md:flex md:z-0 pointer-events-none md:pointer-events-auto md:bg-transparent md:inset-auto
+        `}>
+            {/* Overlay background for mobile to close on click outside - mainly for non-full screen logic but here we use full screen */}
+            
+            <div className="pointer-events-auto h-full relative z-10 w-full md:w-auto">
+                {showAnalysis ? (
+                    <AnalysisPanel 
+                        results={analysisResults} 
+                        isLoading={isProcessing && mode === ToolMode.ANALYZE} 
+                        onClose={() => { setShowAnalysis(false); setShowConfigPanel(true); }} 
+                        lang={language} 
+                    />
+                ) : (
+                    <ConfigPanel 
+                        isOpen={showConfigPanel}
+                        onToggle={() => {
+                            setShowConfigPanel(!showConfigPanel);
+                            if (window.innerWidth < 768) setMobilePanel('none');
+                        }}
+                        lang={language}
+                        activeLayer={activeLayer}
+                        onReusePrompt={handleReusePrompt}
+                        selectedModel={selectedModel}
+                        onSelectModel={setSelectedModel}
+                        systemInstruction={systemInstruction}
+                        onSystemInstructionChange={setSystemInstruction}
+                        onApplyTemplate={applyTemplate}
+                        onOpenGallery={() => setShowGallery(true)}
+                        aspectRatio={aspectRatio}
+                        onAspectRatioChange={setAspectRatio}
+                        resolution={resolution}
+                        onResolutionChange={setResolution}
+                    />
+                )}
+            </div>
+        </div>
         
-        <PromptBar 
-            onGenerate={handleGeminiAction}
-            isProcessing={isProcessing}
-            mode={mode}
-            activeLayerId={activeLayerId}
-            selection={selection}
-            referenceLayerId={referenceLayerId}
-            onSelectRefLayer={setReferenceLayerId}
-            availableRefLayers={availableRefLayers}
-            currentRefLayer={currentRefLayer}
-            lang={language}
-            externalPrompt={reusedPrompt}
-            onOpenGallery={() => setShowGallery(true)}
-        />
+        {/* Mobile Bottom Controls Container */}
+        <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-none">
+            <PromptBar 
+                onGenerate={handleGeminiAction}
+                isProcessing={isProcessing}
+                mode={mode}
+                activeLayerId={activeLayerId}
+                selection={selection}
+                referenceLayerId={referenceLayerId}
+                onSelectRefLayer={setReferenceLayerId}
+                availableRefLayers={availableRefLayers}
+                currentRefLayer={currentRefLayer}
+                lang={language}
+                externalPrompt={reusedPrompt}
+                onOpenGallery={() => setShowGallery(true)}
+            />
+        </div>
+
+         {/* Mobile Bottom Nav */}
+        <div className="md:hidden absolute bottom-0 w-full bg-slate-900 border-t border-slate-700 h-14 flex justify-around items-center z-40 pb-[env(safe-area-inset-bottom)]">
+            <button 
+                onClick={() => toggleMobilePanel('layers')} 
+                className={`flex flex-col items-center justify-center w-full h-full ${mobilePanel === 'layers' ? 'text-white bg-slate-800' : 'text-slate-400'}`}
+            >
+                <i className="fa-solid fa-layer-group text-lg mb-1"></i>
+                <span className="text-[10px] uppercase font-bold">{t(language, 'layers')}</span>
+            </button>
+            
+            <button 
+                onClick={() => toggleMobilePanel('tools')} 
+                className={`flex flex-col items-center justify-center w-full h-full ${mobilePanel === 'tools' ? 'text-white bg-slate-800' : 'text-slate-400'}`}
+            >
+                <i className="fa-solid fa-toolbox text-lg mb-1"></i>
+                <span className="text-[10px] uppercase font-bold">Tools</span>
+            </button>
+
+             <button 
+                onClick={() => toggleMobilePanel('config')} 
+                className={`flex flex-col items-center justify-center w-full h-full ${mobilePanel === 'config' ? 'text-white bg-slate-800' : 'text-slate-400'}`}
+            >
+                <i className="fa-solid fa-sliders text-lg mb-1"></i>
+                <span className="text-[10px] uppercase font-bold">Config</span>
+            </button>
+        </div>
+
+        {/* Mobile Tools Overlay */}
+        {mobilePanel === 'tools' && (
+           <div className="md:hidden absolute bottom-16 left-4 right-4 bg-slate-800/95 backdrop-blur rounded-xl p-4 z-50 shadow-2xl border border-slate-700 animate-slide-up">
+               <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-bold text-slate-400 uppercase">Tools</span>
+                    <button onClick={() => setMobilePanel('none')}><i className="fa-solid fa-xmark text-slate-400"></i></button>
+               </div>
+               <div className="grid grid-cols-4 gap-3">
+                   <button onClick={() => { setMode(ToolMode.MOVE); setMobilePanel('none'); }} className={`flex flex-col items-center p-3 rounded-lg ${mode === ToolMode.MOVE ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                        <i className="fa-solid fa-arrows-up-down-left-right text-xl mb-1"></i>
+                        <span className="text-[10px]">Move</span>
+                   </button>
+                   <button onClick={() => { setMode(ToolMode.EDIT); setMobilePanel('none'); }} className={`flex flex-col items-center p-3 rounded-lg ${mode === ToolMode.EDIT ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                        <i className="fa-solid fa-wand-magic-sparkles text-xl mb-1"></i>
+                        <span className="text-[10px]">Edit</span>
+                   </button>
+                   <button onClick={() => { setMode(ToolMode.SELECT); setMobilePanel('none'); }} className={`flex flex-col items-center p-3 rounded-lg ${mode === ToolMode.SELECT ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                        <i className="fa-solid fa-crop-simple text-xl mb-1"></i>
+                        <span className="text-[10px]">Select</span>
+                   </button>
+                   <button onClick={() => { setMode(ToolMode.ANALYZE); setShowAnalysis(true); setMobilePanel('none'); }} className={`flex flex-col items-center p-3 rounded-lg ${mode === ToolMode.ANALYZE ? 'bg-purple-600 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                        <i className="fa-solid fa-eye text-xl mb-1"></i>
+                        <span className="text-[10px]">Analyze</span>
+                   </button>
+               </div>
+           </div>
+        )}
 
       </div>
       
-      {/* Settings Modal */}
+      {/* Settings Modal - FIXED positioning to cover everything */}
       {showSettings && (
-          <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-              <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-                  <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden max-h-[85dvh] flex flex-col">
+                  <div className="p-4 border-b border-slate-800 flex justify-between items-center shrink-0">
                       <h2 className="font-bold text-white flex items-center gap-2">
                           <i className="fa-solid fa-gear text-slate-400"></i> {t(language, 'settings')}
                       </h2>
@@ -690,7 +789,7 @@ const App: React.FC = () => {
                       </button>
                   </div>
                   
-                  <div className="p-6 space-y-6">
+                  <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
                       <div>
                           <label className="block text-xs font-bold text-slate-400 uppercase mb-2">{t(language, 'language')}</label>
                           <div className="flex gap-2">
@@ -711,7 +810,7 @@ const App: React.FC = () => {
                       </div>
                   </div>
 
-                  <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3">
+                  <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
                       <button onClick={() => setShowSettings(false)} className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition-colors">{t(language, 'cancel')}</button>
                       <button onClick={() => saveSettings(apiKey, language)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all">{t(language, 'save')}</button>
                   </div>
@@ -719,7 +818,7 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Prompt Gallery Modal */}
+      {/* Prompt Gallery Modal - FIXED positioning */}
       <PromptGallery 
           isOpen={showGallery}
           onClose={() => setShowGallery(false)}

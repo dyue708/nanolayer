@@ -98,17 +98,18 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
       };
   }, [width, height]);
 
-  // Mouse Event Handlers
-  const getCanvasCoordinates = (e: React.MouseEvent) => {
+  // Unified Coordinate Calculation
+  const getCanvasCoordinates = (clientX: number, clientY: number) => {
       if (!canvasRef.current) return { x: 0, y: 0 };
       const rect = canvasRef.current.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (width / rect.width);
-      const y = (e.clientY - rect.top) * (height / rect.height);
+      const x = (clientX - rect.left) * (width / rect.width);
+      const y = (clientY - rect.top) * (height / rect.height);
       return { x, y };
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-      const pos = getCanvasCoordinates(e);
+  // Logic for Start (Mouse Down / Touch Start)
+  const handleInputStart = (clientX: number, clientY: number) => {
+      const pos = getCanvasCoordinates(clientX, clientY);
 
       if (mode === ToolMode.SELECT) {
           setIsDragging(true);
@@ -132,9 +133,10 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
       }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  // Logic for Move (Mouse Move / Touch Move)
+  const handleInputMove = (clientX: number, clientY: number) => {
       if (!isDragging) return;
-      const currentPos = getCanvasCoordinates(e);
+      const currentPos = getCanvasCoordinates(clientX, clientY);
 
       if (mode === ToolMode.SELECT) {
           // Clamp values to canvas bounds
@@ -156,9 +158,28 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
       }
   };
 
-  const handleMouseUp = () => {
+  const handleInputEnd = () => {
       setIsDragging(false);
       setMovingLayerId(null);
+  };
+
+  // Mouse Event Wrappers
+  const handleMouseDown = (e: React.MouseEvent) => {
+      handleInputStart(e.clientX, e.clientY);
+  };
+  const handleMouseMove = (e: React.MouseEvent) => {
+      handleInputMove(e.clientX, e.clientY);
+  };
+
+  // Touch Event Wrappers
+  const handleTouchStart = (e: React.TouchEvent) => {
+      // Prevent default to avoid scrolling on mobile while interacting
+      const touch = e.touches[0];
+      handleInputStart(touch.clientX, touch.clientY);
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+      const touch = e.touches[0];
+      handleInputMove(touch.clientX, touch.clientY);
   };
 
   if (width === 0 || height === 0) {
@@ -183,9 +204,12 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
   return (
     <div 
         ref={containerRef} 
-        className="flex-1 relative overflow-hidden flex items-center justify-center bg-slate-950 p-4 select-none"
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        className="flex-1 relative overflow-hidden flex items-center justify-center bg-slate-950 p-4 select-none touch-none"
+        onMouseUp={handleInputEnd}
+        onMouseLeave={handleInputEnd}
+        onTouchEnd={handleInputEnd}
+        onTouchCancel={handleInputEnd}
+        style={{ touchAction: 'none' }}
     >
        {/* Canvas Wrapper with Scale */}
        <div 
@@ -193,7 +217,8 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
             width: width, 
             height: height, 
             transform: `scale(${scale})`,
-            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5)'
+            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5)',
+            touchAction: 'none'
         }} 
         className={`checkerboard-bg relative transition-transform duration-200 ease-out shrink-0
             ${mode === ToolMode.SELECT ? 'cursor-crosshair' : ''}
@@ -201,6 +226,8 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
         `}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
        >
          <canvas
             ref={canvasRef}
@@ -228,7 +255,7 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
          )}
        </div>
        
-       <div className="absolute bottom-4 left-4 bg-slate-900/80 px-3 py-1 rounded text-xs text-slate-400 backdrop-blur-sm pointer-events-none">
+       <div className="absolute top-4 left-4 md:top-auto md:bottom-4 bg-slate-900/80 px-3 py-1 rounded text-xs text-slate-400 backdrop-blur-sm pointer-events-none z-10">
            {width} x {height}px | {Math.round(scale * 100)}% 
            {mode === ToolMode.SELECT && <span className="text-emerald-400 ml-2 font-semibold">{t(lang, 'selectionMode')}</span>}
            {mode === ToolMode.MOVE && <span className="text-blue-400 ml-2 font-semibold">{t(lang, 'toolMove')}</span>}

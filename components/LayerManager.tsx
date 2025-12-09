@@ -14,6 +14,7 @@ interface LayerManagerProps {
   onMoveLayerUp: (id: string) => void;
   onMoveLayerDown: (id: string) => void;
   lang: Language;
+  onClose?: () => void;
 }
 
 const LayerManager: React.FC<LayerManagerProps> = React.memo(({
@@ -26,15 +27,23 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
   onAddLayer,
   onMoveLayerUp,
   onMoveLayerDown,
-  lang
+  lang,
+  onClose
 }) => {
   // Render layers in reverse order for the list (Top layer at top of list)
   const displayLayers = [...layers].reverse();
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700 w-64 shrink-0">
-      <div className="p-4 border-b border-slate-700 flex justify-between items-center">
-        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">{t(lang, 'layers')}</h3>
+    <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700 w-full md:w-64 shrink-0">
+      <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-850 md:bg-transparent">
+        <div className="flex items-center gap-3">
+            {onClose && (
+                <button onClick={onClose} className="md:hidden text-slate-400 hover:text-white">
+                    <i className="fa-solid fa-chevron-down"></i>
+                </button>
+            )}
+            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">{t(lang, 'layers')}</h3>
+        </div>
         <button 
             onClick={onAddLayer}
             className="text-slate-400 hover:text-white hover:bg-slate-700 px-2 py-1 rounded transition-colors text-xs flex items-center gap-1"
@@ -43,7 +52,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
             <i className="fa-solid fa-plus"></i> {t(lang, 'add')}
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar pb-20 md:pb-2">
         {displayLayers.map((layer, index) => {
            // In displayLayers, index 0 is the TOP layer.
            // In the actual layers array, this layer is at layers.length - 1 - index.
@@ -101,7 +110,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                 </div>
                 
                 {/* Order and Delete Controls */}
-                <div className="flex flex-col ml-1 space-y-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-col ml-1 space-y-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                      <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -131,7 +140,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                     e.stopPropagation();
                     onDeleteLayer(layer.id);
                 }}
-                className="ml-1 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="ml-1 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 >
                 <i className="fa-solid fa-trash-can text-xs"></i>
                 </button>

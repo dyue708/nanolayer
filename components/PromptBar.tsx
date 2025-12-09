@@ -76,7 +76,8 @@ const PromptBar: React.FC<PromptBarProps> = ({
   };
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-20">
+    <div className="absolute bottom-20 md:bottom-6 left-0 right-0 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl px-4 z-20 pointer-events-none transition-all duration-300">
+        <div className="pointer-events-auto max-w-2xl mx-auto">
         {/* Reference Layer Picker Popover */}
         {showRefLayerPicker && (
             <div className="absolute bottom-full mb-2 left-4 right-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-60">
@@ -179,6 +180,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
             >
                 {isProcessing ? <i className="fa-solid fa-spinner fa-spin"></i> : t(lang, 'generate')}
             </button>
+        </div>
         </div>
     </div>
   );

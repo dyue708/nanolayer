@@ -49,9 +49,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
   onResolutionChange
 }) => {
 
+  // For mobile view, we might render differently or just use full width
+  // If not open and desktop, show small strip
   if (!isOpen) {
     return (
-      <div className="w-10 h-full bg-slate-900 border-l border-slate-700 flex flex-col items-center py-4 shrink-0 z-20">
+      <div className="w-10 h-full bg-slate-900 border-l border-slate-700 flex flex-col items-center py-4 shrink-0 z-20 hidden md:flex">
         <button 
           onClick={onToggle}
           className="w-8 h-8 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors flex items-center justify-center"
@@ -64,7 +66,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
   }
 
   return (
-    <div className="w-80 h-full bg-slate-900 border-l border-slate-700 flex flex-col shrink-0 transition-all duration-300 z-20 shadow-xl">
+    <div className="w-full md:w-80 h-full bg-slate-900 border-l border-slate-700 flex flex-col shrink-0 transition-all duration-300 z-20 shadow-xl">
       {/* Header */}
       <div className="h-14 border-b border-slate-700 flex items-center justify-between px-4 bg-slate-850 shrink-0">
         <h3 className="font-semibold text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">
@@ -72,11 +74,13 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
             {t(lang, 'sysInstructionTitle')}
         </h3>
         <button onClick={onToggle} className="text-slate-500 hover:text-white transition-colors">
-          <i className="fa-solid fa-chevron-right"></i>
+          <i className="fa-solid fa-chevron-right hidden md:block"></i>
+          {/* Mobile close icon */}
+          <i className="fa-solid fa-chevron-down block md:hidden"></i>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar pb-20 md:pb-4">
         
         {/* Layer Details / Prompt Reuse */}
         <section className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
