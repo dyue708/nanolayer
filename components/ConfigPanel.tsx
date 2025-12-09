@@ -21,6 +21,9 @@ interface ConfigPanelProps {
   onSystemInstructionChange: (val: string) => void;
   onApplyTemplate: (template: string) => void;
 
+  // Gallery
+  onOpenGallery: () => void;
+
   // Config State
   aspectRatio: AspectRatio | undefined;
   onAspectRatioChange: (val: AspectRatio | undefined) => void;
@@ -39,6 +42,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
   systemInstruction,
   onSystemInstructionChange,
   onApplyTemplate,
+  onOpenGallery,
   aspectRatio,
   onAspectRatioChange,
   resolution,
@@ -150,8 +154,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
 
         {/* Style / System Prompt */}
         <section>
-             <label className="block text-[10px] text-slate-500 uppercase font-bold mb-2 flex justify-between">
-                {t(lang, 'sysInstructionTitle')}
+             <label className="block text-[10px] text-slate-500 uppercase font-bold mb-2 flex justify-between items-center">
+                <span>{t(lang, 'sysInstructionTitle')}</span>
+                <button 
+                  onClick={onOpenGallery}
+                  className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded transition-colors flex items-center gap-1 shadow-md shadow-blue-600/20"
+                >
+                   <i className="fa-solid fa-book-open"></i> {t(lang, 'browseGallery')}
+                </button>
              </label>
              
              {/* Templates */}

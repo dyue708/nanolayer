@@ -64,12 +64,19 @@ export const translations = {
     aspectRatio: "Aspect Ratio",
     resolution: "Resolution (Pro Only)",
     ratioOriginal: "Original / Selection",
-    
+    browseGallery: "Gallery",
+    getInspired: "Get Inspired / Browse Gallery",
+
     // Layer Details
     layerDetails: "Layer Details",
     usedPrompt: "Used Prompt",
     reusePrompt: "Reuse Prompt",
     noPromptInfo: "No generation data for this layer.",
+
+    // Prompt Gallery
+    promptGalleryTitle: "Prompt Gallery",
+    promptGallerySubtitle: "High-quality examples to jumpstart your creativity.",
+    useThisPrompt: "Use This Prompt",
   },
   zh: {
     appTitle: "NanoLayer",
@@ -133,12 +140,19 @@ export const translations = {
     aspectRatio: "长宽比",
     resolution: "分辨率 (仅 Pro)",
     ratioOriginal: "原始比例 / 选区",
+    browseGallery: "浏览图库",
+    getInspired: "获取灵感 / 浏览图库",
 
     // Layer Details
     layerDetails: "图层详情",
     usedPrompt: "生成提示词",
     reusePrompt: "重用提示词",
     noPromptInfo: "此图层无生成信息。",
+
+    // Prompt Gallery
+    promptGalleryTitle: "提示词图库",
+    promptGallerySubtitle: "高质量的示例，助您激发创意。",
+    useThisPrompt: "使用此提示词",
   }
 };
 

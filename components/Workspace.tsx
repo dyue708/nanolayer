@@ -12,6 +12,7 @@ interface WorkspaceProps {
   selection: SelectionRect | null;
   onSelectionChange: (rect: SelectionRect | null) => void;
   onLayerMove: (id: string, x: number, y: number) => void;
+  onOpenGallery: () => void; // New prop
   lang: Language;
 }
 
@@ -24,6 +25,7 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
   selection, 
   onSelectionChange, 
   onLayerMove,
+  onOpenGallery,
   lang 
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -162,9 +164,17 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
   if (width === 0 || height === 0) {
       return (
           <div className="flex-1 flex items-center justify-center bg-slate-950 text-slate-500">
-              <div className="text-center">
-                  <i className="fa-solid fa-image text-4xl mb-4 opacity-50"></i>
-                  <p>{t(lang, 'workspacePlaceholder')}</p>
+              <div className="text-center max-w-md p-8 bg-slate-900/50 rounded-2xl border border-slate-800">
+                  <i className="fa-solid fa-wand-magic-sparkles text-5xl mb-6 text-blue-500/50"></i>
+                  <p className="mb-6 text-lg font-light text-slate-300">{t(lang, 'workspacePlaceholder')}</p>
+                  
+                  <button 
+                    onClick={onOpenGallery}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-lg shadow-blue-900/30 transition-all flex items-center gap-3 mx-auto hover:scale-105 active:scale-95"
+                  >
+                      <i className="fa-solid fa-book-open"></i>
+                      {t(lang, 'getInspired')}
+                  </button>
               </div>
           </div>
       )

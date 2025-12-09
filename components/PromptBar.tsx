@@ -20,6 +20,7 @@ interface PromptBarProps {
   
   // Reuse Prompt
   externalPrompt?: string;
+  onOpenGallery: () => void; // New prop
 }
 
 const PromptBar: React.FC<PromptBarProps> = ({
@@ -33,7 +34,8 @@ const PromptBar: React.FC<PromptBarProps> = ({
   availableRefLayers,
   currentRefLayer,
   lang,
-  externalPrompt
+  externalPrompt,
+  onOpenGallery
 }) => {
   const [prompt, setPrompt] = useState('');
   const [showRefLayerPicker, setShowRefLayerPicker] = useState(false);
@@ -97,13 +99,22 @@ const PromptBar: React.FC<PromptBarProps> = ({
                 <i className={`fa-solid ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'fa-wand-magic-sparkles' : 'fa-magnifying-glass'} text-white text-xs`}></i>
             </div>
             
+            {/* Gallery Button */}
+            <button 
+                onClick={onOpenGallery}
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-slate-800 text-blue-400 hover:bg-blue-600 hover:text-white transition-all border border-slate-600 hover:border-blue-500"
+                title={t(lang, 'browseGallery')}
+            >
+                <i className="fa-solid fa-book-open text-xs"></i>
+            </button>
+
             {/* Reference Picker Button */}
             <button 
                 onClick={() => setShowRefLayerPicker(!showRefLayerPicker)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${referenceLayerId ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all border border-transparent ${referenceLayerId ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white border-slate-600 hover:border-slate-500'}`}
                 title={t(lang, 'refLayerTitle')}
             >
-                <i className="fa-regular fa-image"></i>
+                <i className="fa-regular fa-image text-xs"></i>
             </button>
             
             {/* Input Wrapper */}

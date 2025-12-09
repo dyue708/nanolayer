@@ -5,6 +5,7 @@ import Workspace from './components/Workspace';
 import AnalysisPanel from './components/AnalysisPanel';
 import ConfigPanel from './components/ConfigPanel';
 import PromptBar from './components/PromptBar';
+import PromptGallery from './components/PromptGallery'; // NEW
 import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, Language, AspectRatio, ImageResolution } from './types';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail } from './utils/psdHelper';
 import { generateContentWithGemini, analyzeImageWithGemini } from './services/geminiService';
@@ -30,6 +31,9 @@ const App: React.FC = () => {
 
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [showAnalysis, setShowAnalysis] = useState(false);
+
+  // Gallery State
+  const [showGallery, setShowGallery] = useState(false);
 
   // Settings: API Key & Language
   const [showSettings, setShowSettings] = useState(false);
@@ -427,6 +431,11 @@ const App: React.FC = () => {
       setTimeout(() => setReusedPrompt(undefined), 100);
   }, []);
 
+  const handleSelectFromGallery = useCallback((prompt: string) => {
+      setShowGallery(false);
+      handleReusePrompt(prompt);
+  }, [handleReusePrompt]);
+
   const exportImage = () => {
       if (canvasDims.width === 0) return;
       const exportCanvas = document.createElement('canvas');
@@ -579,6 +588,7 @@ const App: React.FC = () => {
             onSelectionChange={setSelection}
             onLayerMove={handleLayerMove}
             lang={language}
+            onOpenGallery={() => setShowGallery(true)}
         />
 
         {/* Right Side Panel Area */}
@@ -601,6 +611,7 @@ const App: React.FC = () => {
                 systemInstruction={systemInstruction}
                 onSystemInstructionChange={setSystemInstruction}
                 onApplyTemplate={applyTemplate}
+                onOpenGallery={() => setShowGallery(true)}
                 aspectRatio={aspectRatio}
                 onAspectRatioChange={setAspectRatio}
                 resolution={resolution}
@@ -620,6 +631,7 @@ const App: React.FC = () => {
             currentRefLayer={currentRefLayer}
             lang={language}
             externalPrompt={reusedPrompt}
+            onOpenGallery={() => setShowGallery(true)}
         />
 
       </div>
@@ -666,9 +678,17 @@ const App: React.FC = () => {
           </div>
       )}
 
+      {/* Prompt Gallery Modal */}
+      <PromptGallery 
+          isOpen={showGallery}
+          onClose={() => setShowGallery(false)}
+          onSelect={handleSelectFromGallery}
+          lang={language}
+      />
+
       {/* Loading Overlay */}
       {isProcessing && (mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE) && (
-        <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
             <div className="relative">
                 <div className={`w-16 h-16 border-4 border-t-transparent rounded-full animate-spin ${selectedModel.includes('pro') ? 'border-purple-500/30 border-t-purple-500' : 'border-blue-500/30 border-t-blue-500'}`}></div>
                 <div className={`absolute inset-0 flex items-center justify-center ${selectedModel.includes('pro') ? 'text-purple-400' : 'text-blue-400'}`}>
