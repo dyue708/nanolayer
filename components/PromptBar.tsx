@@ -11,16 +11,16 @@ interface PromptBarProps {
   selection: SelectionRect | null;
   
   // Reference Layer Props
-  referenceLayerId: string | null;
-  onSelectRefLayer: (id: string | null) => void;
-  availableRefLayers: Layer[];
-  currentRefLayer: Layer | undefined;
+  referenceLayerIds: string[];
+  onToggleReference: (id: string) => void;
+  availableRefLayers: Layer[]; // Keep available for potential picker logic
+  allLayers: Layer[]; // Needed to find reference layer objects
   
   lang: Language;
   
   // Reuse Prompt
   externalPrompt?: string;
-  onOpenGallery: () => void; // New prop
+  onOpenGallery: () => void;
 }
 
 const PromptBar: React.FC<PromptBarProps> = ({
@@ -29,16 +29,14 @@ const PromptBar: React.FC<PromptBarProps> = ({
   mode,
   activeLayerId,
   selection,
-  referenceLayerId,
-  onSelectRefLayer,
-  availableRefLayers,
-  currentRefLayer,
+  referenceLayerIds,
+  onToggleReference,
+  allLayers,
   lang,
   externalPrompt,
   onOpenGallery
 }) => {
   const [prompt, setPrompt] = useState('');
-  const [showRefLayerPicker, setShowRefLayerPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Sync external prompt when it changes (e.g. reused from history)
@@ -75,39 +73,33 @@ const PromptBar: React.FC<PromptBarProps> = ({
     }
   };
 
+  // Get selected reference layer objects
+  const selectedRefLayers = allLayers.filter(l => referenceLayerIds.includes(l.id));
+
   return (
     <div className="absolute bottom-20 md:bottom-6 left-0 right-0 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl px-4 z-20 pointer-events-none transition-all duration-300">
         <div className="pointer-events-auto max-w-2xl mx-auto">
-        {/* Reference Layer Picker Popover */}
-        {showRefLayerPicker && (
-            <div className="absolute bottom-full mb-2 left-4 right-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-60">
-                    <div className="p-2 border-b border-slate-800 flex justify-between items-center bg-slate-850">
-                        <span className="text-xs font-bold text-slate-400 uppercase">{t(lang, 'refLayerTitle')}</span>
-                        <button onClick={() => setShowRefLayerPicker(false)} className="text-slate-500 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
-                    </div>
-                    <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                    {availableRefLayers.length === 0 ? (
-                        <div className="text-center p-4 text-xs text-slate-500">{t(lang, 'noRefLayers')}</div>
-                    ) : (
-                        availableRefLayers.map(layer => (
-                            <button
-                                key={layer.id}
-                                onClick={() => {
-                                    onSelectRefLayer(layer.id === referenceLayerId ? null : layer.id);
-                                    setShowRefLayerPicker(false);
-                                }}
-                                className={`w-full flex items-center p-2 rounded-lg transition-colors ${referenceLayerId === layer.id ? 'bg-indigo-600/20 ring-1 ring-indigo-500' : 'hover:bg-slate-800'}`}
-                            >
-                                <div className="w-8 h-8 rounded overflow-hidden border border-slate-600 bg-slate-900 shrink-0">
-                                        <img src={layer.thumbnail || layer.canvas.toDataURL()} className="w-full h-full object-cover" alt="" />
-                                </div>
-                                <span className="ml-3 text-xs text-slate-200 truncate">{layer.name}</span>
-                                {referenceLayerId === layer.id && <i className="fa-solid fa-check ml-auto text-indigo-400 text-xs"></i>}
-                            </button>
-                        ))
-                    )}
-                    </div>
-            </div>
+        
+        {/* Reference Layer Stack (Visual Indicator) */}
+        {selectedRefLayers.length > 0 && (
+             <div className="flex items-center gap-2 mb-2 bg-slate-900/90 backdrop-blur border border-slate-700/50 p-2 rounded-lg w-fit max-w-full overflow-x-auto shadow-lg animate-fade-in-up">
+                 <span className="text-[10px] text-slate-400 uppercase font-bold shrink-0 px-1">{t(lang, 'refLayerTitle')}</span>
+                 <div className="flex gap-1 shrink-0">
+                     {selectedRefLayers.map(layer => (
+                         <div key={layer.id} className="relative group w-8 h-8 rounded border border-indigo-500/50 overflow-hidden shrink-0">
+                             <img src={layer.thumbnail || layer.canvas.toDataURL()} className="w-full h-full object-cover" alt={layer.name} />
+                             <button 
+                                onClick={() => onToggleReference(layer.id)}
+                                className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                             >
+                                 <i className="fa-solid fa-xmark text-white text-xs"></i>
+                             </button>
+                         </div>
+                     ))}
+                 </div>
+                 <div className="w-px h-4 bg-slate-700 mx-1"></div>
+                 <div className="text-[10px] text-indigo-300 font-mono">{selectedRefLayers.length}</div>
+             </div>
         )}
 
         <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700 p-2 rounded-2xl shadow-2xl shadow-black/50 flex items-end gap-2 relative">
@@ -124,27 +116,9 @@ const PromptBar: React.FC<PromptBarProps> = ({
             >
                 <i className="fa-solid fa-book-open text-xs"></i>
             </button>
-
-            {/* Reference Picker Button */}
-            <button 
-                onClick={() => setShowRefLayerPicker(!showRefLayerPicker)}
-                className={`w-8 h-8 mb-0.5 rounded-full flex items-center justify-center shrink-0 transition-all border border-transparent ${referenceLayerId ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white border-slate-600 hover:border-slate-500'}`}
-                title={t(lang, 'refLayerTitle')}
-            >
-                <i className="fa-regular fa-image text-xs"></i>
-            </button>
             
             {/* Input Wrapper */}
             <div className="flex-1 flex items-start gap-2 bg-slate-800/50 rounded-xl px-3 py-2 border border-transparent focus-within:border-slate-600 focus-within:bg-slate-800 transition-all min-h-[44px]">
-                {/* Reference Pill */}
-                {currentRefLayer && (
-                    <div className="mt-0.5 flex items-center gap-1 bg-indigo-900/50 text-indigo-200 text-[10px] px-1.5 py-0.5 rounded border border-indigo-500/30 shrink-0 max-w-[100px]">
-                        <img src={currentRefLayer.thumbnail || currentRefLayer.canvas.toDataURL()} className="w-3 h-3 rounded-sm object-cover" alt="" />
-                        <span className="truncate">{currentRefLayer.name}</span>
-                        <button onClick={() => onSelectRefLayer(null)} className="hover:text-white ml-1"><i className="fa-solid fa-xmark"></i></button>
-                    </div>
-                )}
-                
                 <textarea
                     ref={textareaRef}
                     value={prompt}
@@ -155,7 +129,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
                             ? t(lang, 'promptPlaceholderSelection') 
                             : mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE
                                 ? (activeLayerId 
-                                    ? (referenceLayerId ? t(lang, 'promptPlaceholderRef') : t(lang, 'promptPlaceholderLayer'))
+                                    ? (selectedRefLayers.length > 0 ? t(lang, 'promptPlaceholderRef') : t(lang, 'promptPlaceholderLayer'))
                                     : t(lang, 'promptPlaceholderGenerate')
                                 )
                                 : t(lang, 'promptPlaceholderDefault')

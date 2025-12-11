@@ -30,7 +30,9 @@ const App: React.FC = () => {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio | undefined>(undefined);
   const [resolution, setResolution] = useState<ImageResolution>('1K');
   const [selectedModel, setSelectedModel] = useState<ImageGenerationModel>('gemini-2.5-flash-image');
-  const [referenceLayerId, setReferenceLayerId] = useState<string | null>(null);
+  
+  // MULTI-REFERENCE STATE
+  const [referenceLayerIds, setReferenceLayerIds] = useState<string[]>([]);
 
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [showAnalysis, setShowAnalysis] = useState(false);
@@ -197,10 +199,19 @@ const App: React.FC = () => {
 
   const handleLayerSelect = useCallback((id: string) => {
       setActiveLayerId(id);
-      if (id === referenceLayerId) {
-          setReferenceLayerId(null);
-      }
-  }, [referenceLayerId]);
+      // Optional: If we select a reference layer as active, maybe we uncheck it as reference? 
+      // Nah, let users do what they want.
+  }, []);
+  
+  const handleToggleReference = useCallback((id: string) => {
+      setReferenceLayerIds(prev => {
+          if (prev.includes(id)) {
+              return prev.filter(rid => rid !== id);
+          } else {
+              return [...prev, id];
+          }
+      });
+  }, []);
   
   const handleLayerMove = useCallback((id: string, x: number, y: number) => {
       setLayers(prev => prev.map(l => l.id === id ? { ...l, x, y } : l));
@@ -224,8 +235,10 @@ const App: React.FC = () => {
           return newLayers;
       });
       if (activeLayerId === id) setActiveLayerId(null);
-      if (referenceLayerId === id) setReferenceLayerId(null);
-  }, [activeLayerId, referenceLayerId]);
+      
+      // Remove from references if deleted
+      setReferenceLayerIds(prev => prev.filter(rid => rid !== id));
+  }, [activeLayerId]);
 
   const handleMoveLayerUp = useCallback((id: string) => {
     setLayers(prev => {
@@ -286,6 +299,14 @@ const App: React.FC = () => {
       let targetW = 0;
       let targetH = 0;
       let isCrop = false;
+      
+      // Store blending info
+      const BLEND_PADDING = 48; // Context pixels around selection
+      let cropInnerX = 0;
+      let cropInnerY = 0;
+      let cropSelectionW = 0;
+      let cropSelectionH = 0;
+
       const activeLayer = layers.find(l => l.id === activeLayerId);
 
       // Determine Base Image (if any)
@@ -297,12 +318,27 @@ const App: React.FC = () => {
 
           if (selection && selection.width > 5 && selection.height > 5) {
               isCrop = true;
-              const relativeX = selection.x - activeLayer.x;
-              const relativeY = selection.y - activeLayer.y;
-              targetW = selection.width;
-              targetH = selection.height;
-              placeX = selection.x;
-              placeY = selection.y;
+              
+              // 1. Calculate relative coordinates of selection within the layer
+              const relX = selection.x - activeLayer.x;
+              const relY = selection.y - activeLayer.y;
+              
+              // 2. Calculate the "Expanded Crop" (Selection + Context)
+              const cropX = Math.max(0, relX - BLEND_PADDING);
+              const cropY = Math.max(0, relY - BLEND_PADDING);
+              const cropR = Math.min(activeLayer.canvas.width, relX + selection.width + BLEND_PADDING);
+              const cropB = Math.min(activeLayer.canvas.height, relY + selection.height + BLEND_PADDING);
+              
+              targetW = cropR - cropX;
+              targetH = cropB - cropY;
+              
+              cropInnerX = relX - cropX;
+              cropInnerY = relY - cropY;
+              cropSelectionW = selection.width;
+              cropSelectionH = selection.height;
+
+              placeX = activeLayer.x + cropX;
+              placeY = activeLayer.y + cropY;
 
               const cropCanvas = document.createElement('canvas');
               cropCanvas.width = targetW;
@@ -312,7 +348,7 @@ const App: React.FC = () => {
               if (ctx) {
                  ctx.drawImage(
                      activeLayer.canvas, 
-                     relativeX, relativeY, targetW, targetH, 
+                     cropX, cropY, targetW, targetH, 
                      0, 0, targetW, targetH 
                  );
               }
@@ -323,23 +359,26 @@ const App: React.FC = () => {
       }
 
       if (mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE) {
-          let referenceBase64: string | undefined = undefined;
-          if (referenceLayerId) {
-              const refLayer = layers.find(l => l.id === referenceLayerId);
-              if (refLayer) {
-                  referenceBase64 = canvasToBase64(refLayer.canvas);
-              }
+          
+          // Collect Reference Images (Supports Multiple)
+          const referenceBase64s: string[] = [];
+          if (referenceLayerIds.length > 0) {
+              referenceLayerIds.forEach(id => {
+                  const refLayer = layers.find(l => l.id === id);
+                  if (refLayer) {
+                      referenceBase64s.push(canvasToBase64(refLayer.canvas));
+                  }
+              });
           }
 
           // Call Generation/Edit Service
-          // if base64Img is null, it treats it as Text-to-Image generation
           const newImageBase64 = await generateContentWithGemini(
               apiKey,
               base64Img, 
               promptText, 
               selectedModel,
               systemInstruction,
-              referenceBase64,
+              referenceBase64s,
               aspectRatio,
               resolution
           );
@@ -348,33 +387,44 @@ const App: React.FC = () => {
           
           // Post-process the result
           if (aspectRatio || !activeLayer) {
-             // If we generated from scratch OR changed aspect ratio, use natural size
              resultCanvas = await base64ToCanvasNatural(newImageBase64);
              
-             // If this was a fresh generation (no layers), set canvas dims
              if (layers.length === 0) {
                  setCanvasDims({ width: resultCanvas.width, height: resultCanvas.height });
-                 // placeX/Y default to 0
              } else if (isCrop) {
-                 // Center result in crop area
                  const centerX = placeX + targetW / 2;
                  const centerY = placeY + targetH / 2;
                  placeX = centerX - resultCanvas.width / 2;
                  placeY = centerY - resultCanvas.height / 2;
              } else if (activeLayer) {
-                 // Center result over previous layer
                  const centerX = placeX + activeLayer.canvas.width / 2;
                  const centerY = placeY + activeLayer.canvas.height / 2;
                  placeX = centerX - resultCanvas.width / 2;
                  placeY = centerY - resultCanvas.height / 2;
              } else {
-                 // New layer on top of existing layers, center it
                  placeX = (canvasDims.width - resultCanvas.width) / 2;
                  placeY = (canvasDims.height - resultCanvas.height) / 2;
              }
           } else {
-             // Edit mode without aspect change: stretch to fit target
              resultCanvas = await base64ToCanvas(newImageBase64, targetW, targetH);
+          }
+
+          // Soft Mask Logic for Crop
+          if (isCrop && activeLayer) {
+             const blendedCanvas = document.createElement('canvas');
+             blendedCanvas.width = targetW;
+             blendedCanvas.height = targetH;
+             const bCtx = blendedCanvas.getContext('2d');
+
+             if (bCtx) {
+                 bCtx.drawImage(resultCanvas, 0, 0, targetW, targetH);
+                 bCtx.globalCompositeOperation = 'destination-in';
+                 bCtx.filter = 'blur(12px)'; 
+                 bCtx.fillStyle = 'black';
+                 bCtx.fillRect(cropInnerX, cropInnerY, cropSelectionW, cropSelectionH);
+                 bCtx.filter = 'none';
+             }
+             resultCanvas = blendedCanvas;
           }
           
           const genCost = calculateCost(selectedModel, resolution);
@@ -398,6 +448,9 @@ const App: React.FC = () => {
           if (selection) setSelection(null); 
           if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
           
+          // Unset references after use? Maybe keep them for iteration.
+          // setReferenceLayerIds([]); 
+
           // Show Cost Notification
           const notification = document.createElement('div');
           notification.className = "fixed bottom-20 right-4 bg-slate-900 border border-emerald-500/50 text-white px-4 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-3 animate-bounce-in";
@@ -434,50 +487,34 @@ const App: React.FC = () => {
   
   const handleReusePrompt = useCallback((promptToReuse: string) => {
       setReusedPrompt(promptToReuse);
-      // Reset after a brief moment so it can be triggered again if needed
       setTimeout(() => setReusedPrompt(undefined), 100);
   }, []);
 
   const handleSelectFromGallery = useCallback((example: PromptExample) => {
-      // 1. Check if the example requires an image and we don't have one
       if (example.requiresImage && layers.length === 0) {
           alert(t(language, 'uploadImageFirst'));
-          
-          // Store this prompt as pending so we can apply it after upload
           pendingPromptRef.current = example;
-          
           fileInputRef.current?.click();
           setShowGallery(false);
           return;
       }
-
-      // 2. Clear system instruction (style merged into prompt now)
       setSystemInstruction('');
-
-      // 3. Set Prompt based on language
       const textToUse = (language === 'zh' && example.promptZh) ? example.promptZh : example.prompt;
-
       setShowGallery(false);
       handleReusePrompt(textToUse);
       
-      // If user has no layers but this is a text-to-image prompt, they might want model selection open
       if (layers.length === 0 && !example.requiresImage) {
           setShowConfigPanel(true);
       }
 
   }, [layers, language, handleReusePrompt]);
 
-  // Effect to apply pending prompt after layer upload
   useEffect(() => {
       if (layers.length > 0 && pendingPromptRef.current) {
           const example = pendingPromptRef.current;
-          
-          // Apply prompt logic
           setSystemInstruction('');
           const textToUse = (language === 'zh' && example.promptZh) ? example.promptZh : example.prompt;
           handleReusePrompt(textToUse);
-          
-          // Clear pending
           pendingPromptRef.current = null;
       }
   }, [layers, language, handleReusePrompt]);
@@ -490,7 +527,6 @@ const App: React.FC = () => {
       const ctx = exportCanvas.getContext('2d');
       if (!ctx) return;
       
-      // Draw all layers flattened
       layers.forEach(layer => {
           if (layer.visible) {
             ctx.globalAlpha = layer.opacity;
@@ -498,14 +534,13 @@ const App: React.FC = () => {
           }
       });
 
-      // Use Blob export which handles large files and proper headers better than DataURL
       exportCanvas.toBlob((blob) => {
           if (blob) {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.download = `nanolayer_${Date.now()}.png`;
             link.href = url;
-            document.body.appendChild(link); // Required for Firefox
+            document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
@@ -533,13 +568,8 @@ const App: React.FC = () => {
     ? layers.filter(l => l.id !== activeLayerId) 
     : layers;
 
-  // Get current reference layer for thumbnail display
-  const currentRefLayer = referenceLayerId ? layers.find(l => l.id === referenceLayerId) : undefined;
-  
   // Get current active layer for details display
   const activeLayer = activeLayerId ? layers.find(l => l.id === activeLayerId) : undefined;
-
-  // Calculate Total Cost
   const totalCost = layers.reduce((acc, layer) => acc + (layer.cost || 0), 0);
 
   return (
@@ -564,7 +594,6 @@ const App: React.FC = () => {
                 <i className="fa-solid fa-folder-open"></i> <span className="hidden sm:inline">{t(language, 'open')}</span>
              </button>
              
-             {/* Desktop Export Buttons */}
              <div className="hidden md:flex gap-2">
                 <div className="h-5 w-px bg-slate-700 mx-1"></div>
                 <button onClick={exportImage} disabled={layers.length === 0} className="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-600 transition-colors flex items-center gap-2 disabled:opacity-50">
@@ -575,14 +604,12 @@ const App: React.FC = () => {
                 </button>
              </div>
 
-             {/* Mobile Export Menu (Using simple logic for now, could be a dropdown) */}
              <button onClick={exportImage} disabled={layers.length === 0} className="md:hidden bg-slate-800 hover:bg-slate-700 p-2 rounded-md border border-slate-600 disabled:opacity-50">
                 <i className="fa-solid fa-download"></i>
              </button>
 
              <div className="h-5 w-px bg-slate-700 mx-1"></div>
 
-             {/* Cost Badge */}
              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700/50" title={t(language, 'totalCost')}>
                 <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t(language, 'totalCost')}</div>
                 <div className="text-sm font-mono text-emerald-400 flex items-center gap-1">
@@ -622,7 +649,7 @@ const App: React.FC = () => {
             </div>
         </div>
 
-        {/* Layers Panel - Desktop & Mobile (Overlay) */}
+        {/* Layers Panel */}
         <div className={`
              ${mobilePanel === 'layers' 
                 ? 'fixed inset-0 z-50 bg-slate-950 flex flex-col' 
@@ -633,7 +660,9 @@ const App: React.FC = () => {
              <LayerManager 
                 layers={layers}
                 activeLayerId={activeLayerId}
+                referenceLayerIds={referenceLayerIds}
                 onSelectLayer={handleLayerSelect}
+                onToggleReference={handleToggleReference}
                 onToggleVisibility={handleToggleVisibility}
                 onOpacityChange={handleOpacityChange}
                 onDeleteLayer={handleDeleteLayer}
@@ -658,7 +687,7 @@ const App: React.FC = () => {
             onOpenGallery={() => setShowGallery(true)}
         />
 
-        {/* Config / Analysis Panel - Desktop & Mobile (Overlay) */}
+        {/* Config / Analysis Panel */}
         <div className={`
              ${mobilePanel === 'config' 
                 ? 'fixed inset-0 z-50 bg-slate-950 flex flex-col' 
@@ -666,8 +695,6 @@ const App: React.FC = () => {
              } 
              md:relative md:flex md:z-0 pointer-events-none md:pointer-events-auto md:bg-transparent md:inset-auto
         `}>
-            {/* Overlay background for mobile to close on click outside - mainly for non-full screen logic but here we use full screen */}
-            
             <div className="pointer-events-auto h-full relative z-10 w-full md:w-auto">
                 {showAnalysis ? (
                     <AnalysisPanel 
@@ -709,10 +736,10 @@ const App: React.FC = () => {
                 mode={mode}
                 activeLayerId={activeLayerId}
                 selection={selection}
-                referenceLayerId={referenceLayerId}
-                onSelectRefLayer={setReferenceLayerId}
+                referenceLayerIds={referenceLayerIds}
+                onToggleReference={handleToggleReference}
                 availableRefLayers={availableRefLayers}
-                currentRefLayer={currentRefLayer}
+                allLayers={layers}
                 lang={language}
                 externalPrompt={reusedPrompt}
                 onOpenGallery={() => setShowGallery(true)}
@@ -776,7 +803,7 @@ const App: React.FC = () => {
 
       </div>
       
-      {/* Settings Modal - FIXED positioning to cover everything */}
+      {/* Settings Modal */}
       {showSettings && (
           <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden max-h-[85dvh] flex flex-col">
@@ -818,7 +845,7 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Prompt Gallery Modal - FIXED positioning */}
+      {/* Prompt Gallery Modal */}
       <PromptGallery 
           isOpen={showGallery}
           onClose={() => setShowGallery(false)}
@@ -837,7 +864,7 @@ const App: React.FC = () => {
             </div>
             <p className={`mt-4 font-medium tracking-wide ${selectedModel.includes('pro') ? 'text-purple-200' : 'text-blue-200'}`}>
                 {activeLayerId 
-                    ? (referenceLayerId ? t(language, 'loadingRef') : (selection ? t(language, 'loadingSelection') : `${t(language, 'loadingEdit')} ${selectedModel === 'gemini-3-pro-image-preview' ? 'Gemini 3 Pro' : 'Nano Banana'}...`))
+                    ? (referenceLayerIds.length > 0 ? t(language, 'loadingRef') : (selection ? t(language, 'loadingSelection') : `${t(language, 'loadingEdit')} ${selectedModel === 'gemini-3-pro-image-preview' ? 'Gemini 3 Pro' : 'Nano Banana'}...`))
                     : `${t(language, 'loadingGen')} ${selectedModel === 'gemini-3-pro-image-preview' ? 'Gemini 3 Pro' : 'Nano Banana'}...`
                 }
             </p>

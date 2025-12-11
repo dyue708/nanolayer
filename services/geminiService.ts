@@ -15,7 +15,7 @@ const getAiClient = (customKey?: string) => {
  * @param prompt Text instruction.
  * @param model The model to use ('gemini-2.5-flash-image' or 'gemini-3-pro-image-preview').
  * @param systemInstruction Optional system instruction to guide the style/behavior.
- * @param referenceImageBase64 Optional second image to use as context/style reference.
+ * @param referenceImageBase64s Optional array of images to use as context/style reference.
  * @param aspectRatio Optional aspect ratio for the output.
  * @param resolution Optional resolution string (e.g., '1K', '2K') - mostly for Pro model.
  * @returns Promise resolving to the generated/edited image as a Base64 string.
@@ -26,7 +26,7 @@ export const generateContentWithGemini = async (
   prompt: string,
   model: string,
   systemInstruction?: string,
-  referenceImageBase64?: string,
+  referenceImageBase64s?: string[],
   aspectRatio?: string,
   resolution?: string
 ): Promise<string> => {
@@ -46,21 +46,23 @@ export const generateContentWithGemini = async (
         });
     }
 
-    // 2. If a reference image is provided, add it to the parts
-    if (referenceImageBase64) {
-       const cleanRef = referenceImageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
-       parts.push({
-           inlineData: {
-               data: cleanRef,
-               mimeType: 'image/png'
-           }
+    // 2. If reference images are provided, add them to the parts
+    if (referenceImageBase64s && referenceImageBase64s.length > 0) {
+       referenceImageBase64s.forEach(ref => {
+           const cleanRef = ref.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+           parts.push({
+               inlineData: {
+                   data: cleanRef,
+                   mimeType: 'image/png'
+               }
+           });
        });
     }
 
     // 3. Add the text prompt
     let finalPrompt = prompt;
-    if (referenceImageBase64) {
-        finalPrompt = `${prompt} (Use the provided reference image as a style/content guide)`;
+    if (referenceImageBase64s && referenceImageBase64s.length > 0) {
+        finalPrompt = `${prompt} (Use the provided ${referenceImageBase64s.length} reference image(s) as style/content context)`;
     }
     
     parts.push({ text: finalPrompt });
