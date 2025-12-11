@@ -199,8 +199,8 @@ const App: React.FC = () => {
 
   const handleLayerSelect = useCallback((id: string) => {
       setActiveLayerId(id);
-      // Optional: If we select a reference layer as active, maybe we uncheck it as reference? 
-      // Nah, let users do what they want.
+      // Mutually Exclusive: If selecting as active, it cannot be a reference.
+      setReferenceLayerIds(prev => prev.filter(rid => rid !== id));
   }, []);
   
   const handleToggleReference = useCallback((id: string) => {
@@ -208,6 +208,8 @@ const App: React.FC = () => {
           if (prev.includes(id)) {
               return prev.filter(rid => rid !== id);
           } else {
+              // Mutually Exclusive: If adding as reference, it cannot be active.
+              setActiveLayerId(currentActive => currentActive === id ? null : currentActive);
               return [...prev, id];
           }
       });

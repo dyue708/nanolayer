@@ -38,7 +38,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
   const displayLayers = [...layers].reverse();
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700 w-full md:w-64 shrink-0">
+    <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700 w-full md:w-64 shrink-0 shadow-2xl z-20">
       <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-850 md:bg-transparent min-h-[56px] pt-[env(safe-area-inset-top)]">
         <div className="flex items-center gap-3">
             {onClose && (
@@ -56,54 +56,41 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
             <i className="fa-solid fa-plus"></i> {t(lang, 'add')}
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar pb-24 md:pb-2">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar pb-24 md:pb-2 bg-slate-900/50">
         {displayLayers.map((layer, index) => {
            // In displayLayers, index 0 is the TOP layer.
            const isTop = index === 0;
            const isBottom = index === displayLayers.length - 1;
            const isRef = referenceLayerIds.includes(layer.id);
+           const isActive = activeLayerId === layer.id;
 
            return (
             <div
                 key={layer.id}
                 onClick={() => onSelectLayer(layer.id)}
-                className={`group flex items-center p-2 rounded-md cursor-pointer transition-all border border-transparent ${
-                activeLayerId === layer.id
-                    ? 'bg-blue-600/10 border-blue-600/30'
-                    : 'bg-slate-800 hover:bg-slate-750'
+                className={`group flex items-center p-2 rounded-lg cursor-pointer transition-all border ${
+                isActive
+                    ? 'bg-blue-900/40 border-blue-500/80 ring-1 ring-blue-500/30 shadow-lg'
+                    : 'bg-slate-800 border-transparent hover:bg-slate-700 border-slate-700/50'
                 }`}
             >
-                {/* Reference Toggle */}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleReference(layer.id);
-                    }}
-                    className={`w-5 h-6 flex items-center justify-center rounded transition-colors mr-1 ${
-                        isRef ? 'text-indigo-400 bg-indigo-900/30' : 'text-slate-600 hover:text-slate-400'
-                    }`}
-                    title={t(lang, 'toggleRef')}
-                >
-                    <i className={`fa-solid fa-image text-xs`}></i>
-                    {isRef && <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>}
-                </button>
-
-                {/* Visibility Toggle */}
+                {/* Visibility Toggle (Left) */}
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         onToggleVisibility(layer.id);
                     }}
-                    className={`w-5 h-6 flex items-center justify-center rounded hover:bg-white/5 ${
-                        layer.visible ? 'text-slate-400' : 'text-slate-600'
+                    className={`w-6 h-6 flex items-center justify-center rounded hover:bg-white/10 mr-1 shrink-0 ${
+                        layer.visible ? 'text-slate-300' : 'text-slate-600'
                     }`}
+                    title="Toggle Visibility"
                 >
                     <i className={`fa-solid ${layer.visible ? 'fa-eye' : 'fa-eye-slash'} text-xs`}></i>
                 </button>
                 
                 {/* Thumbnail Preview */}
-                <div className={`w-10 h-10 ml-2 rounded border overflow-hidden relative shrink-0 transition-colors ${
-                    activeLayerId === layer.id ? 'border-blue-500 ring-1 ring-blue-500/30' : 'border-slate-600'
+                <div className={`w-10 h-10 rounded border overflow-hidden relative shrink-0 transition-colors bg-slate-900 ${
+                    isActive ? 'border-blue-400' : 'border-slate-600'
                 }`}>
                     <div className="absolute inset-0 checkerboard-bg opacity-50"></div>
                     <img 
@@ -112,12 +99,15 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                         className="absolute inset-0 w-full h-full object-cover" 
                     />
                     {isRef && (
-                        <div className="absolute inset-0 ring-2 ring-inset ring-indigo-500 bg-indigo-500/10 pointer-events-none"></div>
+                        <div className="absolute inset-0 ring-2 ring-inset ring-indigo-500 bg-indigo-500/20 pointer-events-none flex items-center justify-center">
+                            <i className="fa-solid fa-link text-indigo-200 text-[10px] drop-shadow-md"></i>
+                        </div>
                     )}
                 </div>
 
+                {/* Layer Name & Opacity */}
                 <div className="ml-3 flex-1 min-w-0">
-                    <p className={`text-xs font-medium truncate ${activeLayerId === layer.id ? 'text-blue-100' : 'text-slate-300'}`}>
+                    <p className={`text-xs font-bold truncate transition-colors ${isActive ? 'text-blue-100' : 'text-slate-300'}`}>
                         {layer.name}
                     </p>
                     <div className="flex items-center mt-1" onClick={(e) => e.stopPropagation()}>
@@ -134,41 +124,68 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                     </div>
                 </div>
                 
-                {/* Order and Delete Controls */}
-                <div className="flex flex-col ml-1 space-y-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                     <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onMoveLayerUp(layer.id);
-                        }}
-                        disabled={isTop}
-                        className={`w-5 h-4 flex items-center justify-center text-[10px] rounded hover:bg-slate-600 ${isTop ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400'}`}
-                        title={t(lang, 'moveUp')}
-                    >
-                        <i className="fa-solid fa-chevron-up"></i>
-                    </button>
+                {/* Right Side Actions Divider */}
+                <div className={`w-px h-8 mx-2 ${isActive ? 'bg-blue-500/20' : 'bg-slate-700'}`}></div>
+
+                {/* Right Side Action Buttons */}
+                <div className="flex items-center gap-1">
+                    
+                    {/* Reference Toggle (Moved to Right) - Hidden for active layer */}
+                    {!isActive && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleReference(layer.id);
+                            }}
+                            className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${
+                                isRef 
+                                    ? 'text-indigo-300 bg-indigo-500/20 ring-1 ring-indigo-500/50' 
+                                    : 'text-slate-500 hover:text-slate-200 hover:bg-slate-600'
+                            }`}
+                            title={t(lang, 'toggleRef')}
+                        >
+                            <i className={`fa-solid fa-image text-[10px] ${isRef ? 'animate-pulse' : ''}`}></i>
+                        </button>
+                    )}
+
+                    {/* Move Up/Down */}
+                    <div className="flex flex-col space-y-0.5">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onMoveLayerUp(layer.id);
+                            }}
+                            disabled={isTop}
+                            className={`w-4 h-3 flex items-center justify-center text-[8px] rounded hover:bg-slate-600 ${isTop ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400'}`}
+                            title={t(lang, 'moveUp')}
+                        >
+                            <i className="fa-solid fa-chevron-up"></i>
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onMoveLayerDown(layer.id);
+                            }}
+                            disabled={isBottom}
+                            className={`w-4 h-3 flex items-center justify-center text-[8px] rounded hover:bg-slate-600 ${isBottom ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400'}`}
+                            title={t(lang, 'moveDown')}
+                        >
+                            <i className="fa-solid fa-chevron-down"></i>
+                        </button>
+                    </div>
+
+                    {/* Delete */}
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            onMoveLayerDown(layer.id);
+                            onDeleteLayer(layer.id);
                         }}
-                        disabled={isBottom}
-                        className={`w-5 h-4 flex items-center justify-center text-[10px] rounded hover:bg-slate-600 ${isBottom ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400'}`}
-                        title={t(lang, 'moveDown')}
+                        className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-slate-700/50 rounded transition-colors"
+                        title="Delete Layer"
                     >
-                        <i className="fa-solid fa-chevron-down"></i>
+                        <i className="fa-solid fa-trash-can text-[10px]"></i>
                     </button>
                 </div>
-
-                <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteLayer(layer.id);
-                }}
-                className="ml-1 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                >
-                <i className="fa-solid fa-trash-can text-xs"></i>
-                </button>
             </div>
            );
         })}
