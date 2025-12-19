@@ -251,7 +251,7 @@ const App: React.FC = () => {
               const relW = Math.round((selection.width / activeLayer.canvas.width) * 100);
               const relH = Math.round((selection.height / activeLayer.canvas.height) * 100);
               
-              finalPrompt = `Modify only the region at approx (X:${relX}%, Y:${relY}%) with size (W:${relW}%, H:${relH}%) in the provided image. Change it to: ${promptText}. IMPORTANT: The rest of the image (everything outside this region) must remain 100% exactly as it is in the original. Output the full modified image at its original resolution.`;
+              finalPrompt = `Modify only the specific region located at approximately (X:${relX}%, Y:${relY}%) with size (W:${relW}%, H:${relH}%) in the provided image. Change that specific area to: ${promptText}. IMPORTANT: Everything outside this selection MUST remain exactly 100% identical to the original image background. Do not alter any pixels outside the region of interest. Output the full-sized image at original dimensions.`;
           }
       }
 
@@ -276,7 +276,7 @@ const App: React.FC = () => {
       if (aspectRatio || !activeLayer) {
           resultCanvas = await base64ToCanvasNatural(newImageBase64);
       } else {
-          // Force match the original layer's dimensions to ensure perfect overlay
+          // Ensure dimensions match original layer for seamless composition
           resultCanvas = await base64ToCanvas(newImageBase64, activeLayer.canvas.width, activeLayer.canvas.height);
       }
 

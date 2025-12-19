@@ -26,7 +26,6 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
   onSelectLayer,
   onToggleReference,
   onToggleVisibility,
-  onOpacityChange,
   onDeleteLayer,
   onAddLayer,
   onMoveLayerUp,
@@ -42,7 +41,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
       <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-850 md:bg-transparent min-h-[56px] pt-[env(safe-area-inset-top)]">
         <div className="flex items-center gap-3">
             {onClose && (
-                <button onClick={onClose} className="md:hidden text-slate-400 hover:text-white">
+                <button onClick={onClose} className="md:hidden text-slate-400 hover:text-white transition-colors">
                     <i className="fa-solid fa-chevron-down"></i>
                 </button>
             )}
@@ -56,7 +55,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
             <i className="fa-solid fa-plus text-[10px]"></i> {t(lang, 'add')}
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 custom-scrollbar pb-24 md:pb-6 bg-slate-950/30">
+      <div className="flex-1 overflow-y-auto p-2.5 space-y-2 custom-scrollbar pb-24 md:pb-6 bg-slate-950/30">
         {displayLayers.map((layer, index) => {
            const isTop = index === 0;
            const isBottom = index === displayLayers.length - 1;
@@ -67,7 +66,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
             <div
                 key={layer.id}
                 onClick={() => onSelectLayer(layer.id)}
-                className={`group flex items-center p-2.5 rounded-xl cursor-pointer transition-all border-2 ${
+                className={`group flex items-center p-2 rounded-xl cursor-pointer transition-all border-2 ${
                 isActive
                     ? 'bg-blue-500/10 border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
                     : 'bg-slate-800/60 border-transparent hover:bg-slate-800 border-slate-700/30'
@@ -88,7 +87,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                 </button>
                 
                 {/* Thumbnail Preview */}
-                <div className={`w-12 h-12 rounded-lg border-2 overflow-hidden relative shrink-0 transition-all bg-slate-900 shadow-sm ${
+                <div className={`w-10 h-10 rounded-lg border-2 overflow-hidden relative shrink-0 transition-all bg-slate-900 shadow-sm ${
                     isActive ? 'border-blue-400 scale-105' : 'border-slate-700'
                 }`}>
                     <div className="absolute inset-0 checkerboard-bg opacity-30"></div>
@@ -104,57 +103,46 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                     )}
                 </div>
 
-                {/* Layer Name & Opacity */}
+                {/* Layer Name - Opacity slider removed for space */}
                 <div className="ml-3 flex-1 min-w-0">
                     <p className={`text-xs font-black truncate transition-colors uppercase tracking-tight ${isActive ? 'text-blue-100' : 'text-slate-300'}`}>
                         {layer.name}
                     </p>
-                    <div className="flex items-center mt-1.5" onClick={(e) => e.stopPropagation()}>
-                        <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={layer.opacity}
-                        onChange={(e) => onOpacityChange(layer.id, parseFloat(e.target.value))}
-                        className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
-                        />
-                    </div>
+                    <p className="text-[9px] text-slate-500 font-mono mt-0.5 opacity-60">
+                        {layer.canvas.width}x{layer.canvas.height}
+                    </p>
                 </div>
                 
-                {/* Divider */}
-                <div className={`w-px h-10 mx-3 ${isActive ? 'bg-blue-500/30' : 'bg-slate-700/50'}`}></div>
-
                 {/* Right Side Actions Group */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 shrink-0 ml-2">
                     
-                    {/* Reference Toggle - Only visible if not the main active layer */}
+                    {/* Reference Toggle */}
                     {!isActive && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onToggleReference(layer.id);
                             }}
-                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                            className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${
                                 isRef 
                                     ? 'text-indigo-200 bg-indigo-600 border border-indigo-400/50 shadow-lg shadow-indigo-900/40' 
                                     : 'text-slate-500 hover:text-indigo-300 hover:bg-slate-700 border border-transparent'
                             }`}
                             title={t(lang, 'toggleRef')}
                         >
-                            <i className={`fa-solid fa-image text-xs ${isRef ? 'animate-pulse' : ''}`}></i>
+                            <i className={`fa-solid fa-image text-[10px] ${isRef ? 'animate-pulse' : ''}`}></i>
                         </button>
                     )}
 
                     {/* Move Up/Down Mini Buttons */}
-                    <div className="flex flex-col space-y-1">
+                    <div className="flex flex-col space-y-0.5">
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onMoveLayerUp(layer.id);
                             }}
                             disabled={isTop}
-                            className={`w-6 h-4 flex items-center justify-center text-[10px] rounded hover:bg-slate-700 border border-slate-700/30 ${isTop ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400'}`}
+                            className={`w-5 h-3.5 flex items-center justify-center text-[9px] rounded hover:bg-slate-700 border border-slate-700/30 ${isTop ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400'}`}
                             title={t(lang, 'moveUp')}
                         >
                             <i className="fa-solid fa-chevron-up"></i>
@@ -165,7 +153,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                                 onMoveLayerDown(layer.id);
                             }}
                             disabled={isBottom}
-                            className={`w-6 h-4 flex items-center justify-center text-[10px] rounded hover:bg-slate-700 border border-slate-700/30 ${isBottom ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400'}`}
+                            className={`w-5 h-3.5 flex items-center justify-center text-[9px] rounded hover:bg-slate-700 border border-slate-700/30 ${isBottom ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400'}`}
                             title={t(lang, 'moveDown')}
                         >
                             <i className="fa-solid fa-chevron-down"></i>
@@ -178,10 +166,10 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                             e.stopPropagation();
                             onDeleteLayer(layer.id);
                         }}
-                        className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-red-100 hover:bg-red-500/80 rounded-lg transition-all border border-transparent hover:border-red-400/50"
+                        className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-red-100 hover:bg-red-500/80 rounded-lg transition-all border border-transparent hover:border-red-400/50"
                         title="Delete Layer"
                     >
-                        <i className="fa-solid fa-trash-can text-xs"></i>
+                        <i className="fa-solid fa-trash-can text-[10px]"></i>
                     </button>
                 </div>
             </div>
