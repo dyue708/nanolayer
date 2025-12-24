@@ -1,0 +1,38 @@
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 复制 package 文件
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# 安装依赖
+RUN npm ci
+
+# 复制源代码
+COPY src ./src
+
+# 构建项目
+RUN npm run build
+
+# 生产环境
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 安装生产依赖
+COPY package*.json ./
+RUN npm ci --only=production
+
+# 复制构建产物
+COPY --from=builder /app/dist ./dist
+
+# 创建数据目录
+RUN mkdir -p /app/data
+
+# 暴露端口
+EXPOSE 3000
+
+# 启动命令
+CMD ["node", "dist/app.js"]
+

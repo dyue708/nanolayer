@@ -355,7 +355,12 @@ const App: React.FC = () => {
           img.crossOrigin = 'anonymous';
           await new Promise((resolve, reject) => {
               img.onload = () => {
-                  console.log('History image loaded successfully');
+                  console.log('History image loaded successfully', {
+                      width: img.width,
+                      height: img.height,
+                      naturalWidth: img.naturalWidth,
+                      naturalHeight: img.naturalHeight
+                  });
                   resolve(null);
               };
               img.onerror = (error) => {
@@ -368,16 +373,78 @@ const App: React.FC = () => {
               img.src = image.image_url;
           });
 
-          // 创建 canvas
-          const resultCanvas = document.createElement('canvas');
-          resultCanvas.width = image.metadata?.width || img.width;
-          resultCanvas.height = image.metadata?.height || img.height;
-          const ctx = resultCanvas.getContext('2d');
-          if (ctx) ctx.drawImage(img, 0, 0);
+          // 确保图片已完全加载（等待自然尺寸可用）
+          if (!img.complete || img.naturalWidth === 0 || img.naturalHeight === 0) {
+              // 如果图片还没完全加载，再等待一下
+              await new Promise(resolve => setTimeout(resolve, 100));
+              if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+                  throw new Error(`Image not fully loaded: complete=${img.complete}, naturalWidth=${img.naturalWidth}, naturalHeight=${img.naturalHeight}`);
+              }
+          }
 
-          // 计算位置
-          const placeX = (canvasDims.width - resultCanvas.width) / 2;
-          const placeY = (canvasDims.height - resultCanvas.height) / 2;
+          // 创建 canvas - 使用图片的实际尺寸
+          const resultCanvas = document.createElement('canvas');
+          // 优先使用 metadata 中的尺寸，否则使用图片的自然尺寸
+          const canvasWidth = image.metadata?.width || img.naturalWidth || img.width;
+          const canvasHeight = image.metadata?.height || img.naturalHeight || img.height;
+          
+          if (canvasWidth === 0 || canvasHeight === 0) {
+              throw new Error(`Invalid image dimensions: ${canvasWidth}x${canvasHeight}`);
+          }
+          
+          resultCanvas.width = canvasWidth;
+          resultCanvas.height = canvasHeight;
+          
+          const ctx = resultCanvas.getContext('2d', { willReadFrequently: true });
+          if (!ctx) {
+              throw new Error('Failed to get canvas context');
+          }
+          
+          // 清除 canvas（确保干净）
+          ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+          
+          // 绘制图片到 canvas - 使用图片的自然尺寸确保完整绘制
+          ctx.drawImage(img, 0, 0, img.naturalWidth || canvasWidth, img.naturalHeight || canvasHeight);
+          
+          // 验证 canvas 是否有内容
+          const imageData = ctx.getImageData(0, 0, Math.min(10, canvasWidth), Math.min(10, canvasHeight));
+          const hasContent = imageData.data.some(pixel => pixel !== 0);
+          
+          if (!hasContent) {
+              console.warn('Canvas appears to be empty after drawing image, retrying...');
+              // 尝试重新绘制（不使用尺寸参数）
+              ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+              ctx.drawImage(img, 0, 0);
+          }
+          
+          console.log('Canvas created:', {
+              canvasWidth,
+              canvasHeight,
+              imgNaturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
+              imgSize: `${img.width}x${img.height}`,
+              hasContent,
+              canvasToDataURL: resultCanvas.toDataURL().substring(0, 100) + '...'
+          });
+
+          // 如果画布尺寸为 0，设置为图片尺寸
+          if (canvasDims.width === 0 || canvasDims.height === 0) {
+              setCanvasDims({ width: canvasWidth, height: canvasHeight });
+              console.log('Canvas dimensions set to image size:', { width: canvasWidth, height: canvasHeight });
+          } else {
+              // 如果画布已有尺寸，确保画布足够大以容纳图片
+              const newWidth = Math.max(canvasDims.width, canvasWidth);
+              const newHeight = Math.max(canvasDims.height, canvasHeight);
+              if (newWidth > canvasDims.width || newHeight > canvasDims.height) {
+                  setCanvasDims({ width: newWidth, height: newHeight });
+                  console.log('Canvas dimensions expanded:', { width: newWidth, height: newHeight });
+              }
+          }
+
+          // 计算位置（使用当前或新的画布尺寸）
+          const currentCanvasWidth = canvasDims.width || canvasWidth;
+          const currentCanvasHeight = canvasDims.height || canvasHeight;
+          const placeX = Math.max(0, (currentCanvasWidth - resultCanvas.width) / 2);
+          const placeY = Math.max(0, (currentCanvasHeight - resultCanvas.height) / 2);
 
           // 创建新图层
           const newLayer: Layer = {
@@ -394,7 +461,18 @@ const App: React.FC = () => {
               prompt: image.prompt
           };
           
-          setLayers(prev => [...prev, newLayer]);
+          console.log('Adding layer:', {
+              id: newLayer.id,
+              position: { x: placeX, y: placeY },
+              size: { width: canvasWidth, height: canvasHeight },
+              canvasDims: { width: currentCanvasWidth, height: currentCanvasHeight }
+          });
+          
+          setLayers(prev => {
+              const newLayers = [...prev, newLayer];
+              console.log('Total layers:', newLayers.length);
+              return newLayers;
+          });
           setActiveLayerId(newLayer.id);
           setSelection(null);
           if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
