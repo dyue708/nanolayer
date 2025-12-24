@@ -2,12 +2,29 @@ import OSS from 'ali-oss';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 
-const client = new OSS({
-  accessKeyId: process.env.OSS_ACCESS_KEY_ID!,
-  accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET!,
-  region: process.env.OSS_REGION!,
-  bucket: process.env.OSS_BUCKET!
-});
+// 延迟初始化 OSS 客户端
+let client: OSS | null = null;
+
+export function getOSSClient(): OSS {
+  if (!client) {
+    const accessKeyId = process.env.OSS_ACCESS_KEY_ID;
+    const accessKeySecret = process.env.OSS_ACCESS_KEY_SECRET;
+    const region = process.env.OSS_REGION;
+    const bucket = process.env.OSS_BUCKET;
+
+    if (!accessKeyId || !accessKeySecret || !region || !bucket) {
+      throw new Error('OSS configuration is missing. Please set OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_REGION, and OSS_BUCKET in .env file');
+    }
+
+    client = new OSS({
+      accessKeyId,
+      accessKeySecret,
+      region,
+      bucket
+    });
+  }
+  return client;
+}
 
 export interface UploadResult {
   imageUrl: string;
@@ -76,13 +93,16 @@ export async function uploadImage(
   // 生成缩略图
   const thumbnailBuffer = await generateThumbnail(imageBuffer);
 
+  // 获取 OSS 客户端
+  const ossClient = getOSSClient();
+
   // 上传原图
-  const imageResult = await client.put(imageFileName, imageBuffer, {
+  const imageResult = await ossClient.put(imageFileName, imageBuffer, {
     contentType: 'image/png'
   });
 
   // 上传缩略图
-  const thumbnailResult = await client.put(thumbnailFileName, thumbnailBuffer, {
+  const thumbnailResult = await ossClient.put(thumbnailFileName, thumbnailBuffer, {
     contentType: 'image/png'
   });
 

@@ -9,7 +9,7 @@ import PromptGallery from './components/PromptGallery';
 import HistoryPanel from './components/HistoryPanel';
 import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, Language, AspectRatio, ImageResolution } from './types';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail } from './utils/psdHelper';
-import { generateImage, analyzeImage } from './services/apiService';
+import { generateImage, analyzeImage, ImageHistoryItem } from './services/apiService';
 import { t } from './utils/i18n';
 import { PromptExample } from './utils/promptExamples';
 
@@ -260,14 +260,30 @@ const App: React.FC = () => {
           aspectRatio: aspectRatio,
           resolution: resolution
       });
+      
+      console.log('API response:', result);
 
       // 下载图片并创建 canvas
       const img = new Image();
       img.crossOrigin = 'anonymous';
       await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = result.imageUrl;
+          img.onload = () => {
+              console.log('Image loaded successfully:', result.imageUrl);
+              resolve(null);
+          };
+          img.onerror = (error) => {
+              console.error('Image load error:', error);
+              reject(new Error(`Failed to load image. This might be a CORS issue or the image URL is not accessible.`));
+          };
+          
+          // 优先使用 base64，如果没有则使用 URL
+          if (result.imageBase64) {
+              console.log('Using base64 image data');
+              img.src = result.imageBase64;
+          } else {
+              console.log('Loading image from URL:', result.imageUrl);
+              img.src = result.imageUrl;
+          }
       });
 
       let resultCanvas: HTMLCanvasElement;
@@ -309,7 +325,13 @@ const App: React.FC = () => {
       if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
 
     } catch (err) {
-        alert("Operation Failed: " + (err instanceof Error ? err.message : String(err)));
+        console.error('Generation error:', err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        alert("Operation Failed: " + errorMessage);
+        // 如果图片加载失败，尝试使用备用方法
+        if (errorMessage.includes('Failed to load image') && result) {
+            console.warn('Image load failed, this might be a CORS issue. Please check the image URL:', result.imageUrl);
+        }
     } finally {
         setIsProcessing(false);
     }
@@ -319,6 +341,73 @@ const App: React.FC = () => {
       setReusedPrompt(promptToReuse);
       setTimeout(() => setReusedPrompt(undefined), 100);
   }, []);
+
+  const handleSelectFromHistory = useCallback(async (image: ImageHistoryItem) => {
+      try {
+          setIsProcessing(true);
+          
+          // 同时重新使用提示词
+          setReusedPrompt(image.prompt);
+          setTimeout(() => setReusedPrompt(undefined), 100);
+          
+          // 加载图片
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise((resolve, reject) => {
+              img.onload = () => {
+                  console.log('History image loaded successfully');
+                  resolve(null);
+              };
+              img.onerror = (error) => {
+                  console.error('History image load error:', error);
+                  reject(new Error(`Failed to load image from history`));
+              };
+              
+              // 使用代理 URL 加载图片
+              console.log('Loading history image from:', image.image_url);
+              img.src = image.image_url;
+          });
+
+          // 创建 canvas
+          const resultCanvas = document.createElement('canvas');
+          resultCanvas.width = image.metadata?.width || img.width;
+          resultCanvas.height = image.metadata?.height || img.height;
+          const ctx = resultCanvas.getContext('2d');
+          if (ctx) ctx.drawImage(img, 0, 0);
+
+          // 计算位置
+          const placeX = (canvasDims.width - resultCanvas.width) / 2;
+          const placeY = (canvasDims.height - resultCanvas.height) / 2;
+
+          // 创建新图层
+          const newLayer: Layer = {
+              id: `layer-${Date.now()}`,
+              name: `History: ${image.prompt.substring(0, 15)}...`,
+              visible: true,
+              opacity: 1,
+              canvas: resultCanvas,
+              thumbnail: generateThumbnail(resultCanvas),
+              zIndex: layers.length,
+              x: placeX,
+              y: placeY,
+              cost: image.cost,
+              prompt: image.prompt
+          };
+          
+          setLayers(prev => [...prev, newLayer]);
+          setActiveLayerId(newLayer.id);
+          setSelection(null);
+          if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
+          setShowHistory(false);
+          
+          console.log('History image loaded to canvas successfully');
+      } catch (err) {
+          console.error('Error loading history image:', err);
+          alert("Failed to load image from history: " + (err instanceof Error ? err.message : String(err)));
+      } finally {
+          setIsProcessing(false);
+      }
+  }, [layers, canvasDims]);
 
   const handleSelectFromGallery = useCallback((example: PromptExample) => {
       if (example.requiresImage && layers.length === 0) {
@@ -525,6 +614,7 @@ const App: React.FC = () => {
         isOpen={showHistory} 
         onClose={() => setShowHistory(false)} 
         lang={language}
+        onSelectImage={handleSelectFromHistory}
         onReusePrompt={handleReusePrompt}
       />
       {isProcessing && (

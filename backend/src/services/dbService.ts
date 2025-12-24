@@ -1,9 +1,5 @@
 import { db } from '../config/database.js';
 import { ImageHistory, CreateImageHistoryParams } from '../models/ImageHistory.js';
-import { promisify } from 'util';
-
-const dbGet = promisify(db.getDb().get.bind(db.getDb()));
-const dbAll = promisify(db.getDb().all.bind(db.getDb()));
 
 export class DbService {
   /**
@@ -48,16 +44,28 @@ export class DbService {
     }
 
     // 获取总数
-    const totalResult = await dbGet(
-      `SELECT COUNT(*) as total FROM image_history ${whereClause}`,
-      params
-    ) as { total: number } | undefined;
+    const totalResult = await new Promise<{ total: number } | undefined>((resolve, reject) => {
+      db.getDb().get(
+        `SELECT COUNT(*) as total FROM image_history ${whereClause}`,
+        params,
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row as { total: number } | undefined);
+        }
+      );
+    });
 
     // 获取列表
-    const images = await dbAll(
-      `SELECT * FROM image_history ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [...params, limit, offset]
-    ) as ImageHistory[] | undefined;
+    const images = await new Promise<ImageHistory[] | undefined>((resolve, reject) => {
+      db.getDb().all(
+        `SELECT * FROM image_history ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        [...params, limit, offset],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows as ImageHistory[] | undefined);
+        }
+      );
+    });
 
     return {
       images: (images || []).map(img => ({
@@ -72,10 +80,16 @@ export class DbService {
    * 根据 ID 获取图片详情
    */
   async getImageById(id: number): Promise<ImageHistory | null> {
-    const image = await dbGet(
-      'SELECT * FROM image_history WHERE id = ?',
-      [id]
-    ) as ImageHistory | undefined;
+    const image = await new Promise<ImageHistory | undefined>((resolve, reject) => {
+      db.getDb().get(
+        'SELECT * FROM image_history WHERE id = ?',
+        [id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row as ImageHistory | undefined);
+        }
+      );
+    });
 
     if (!image) return null;
 

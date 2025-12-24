@@ -41,17 +41,23 @@ export interface FalResult {
  * 上传图片到 fal storage
  */
 export async function uploadImageToFal(imageBase64: string): Promise<string> {
-  // 移除 data URI 前缀
-  const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
-  
-  // 转换为 Buffer
-  const buffer = Buffer.from(base64Data, 'base64');
-  
-  // 上传到 fal storage
-  // fal.storage.upload 在 Node.js 中可以直接接受 Buffer
-  const url = await fal.storage.upload(buffer as any);
-  
-  return url;
+  try {
+    // 移除 data URI 前缀
+    const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
+    
+    // 转换为 Buffer
+    const buffer = Buffer.from(base64Data, 'base64');
+    
+    // 上传到 fal storage
+    // fal.storage.upload 可以接受 Buffer 或 base64 字符串
+    const url = await fal.storage.upload(buffer);
+    
+    console.log('Image uploaded to fal storage:', url);
+    return url;
+  } catch (error: any) {
+    console.error('Error uploading to fal storage:', error);
+    throw new Error(`Failed to upload image to fal storage: ${error.message}`);
+  }
 }
 
 /**
@@ -86,9 +92,14 @@ export async function generateImage(params: GenerateImageParams): Promise<FalRes
     }
   });
 
+  // fal 返回的数据结构
+  const resultData = result.data as any;
+  
   return {
-    imageUrl: result.images?.[0]?.url,
-    imageBase64: result.images?.[0]?.file_data ? `data:image/png;base64,${result.images[0].file_data}` : undefined,
+    imageUrl: resultData?.images?.[0]?.url || resultData?.image?.url,
+    imageBase64: resultData?.images?.[0]?.file_data || resultData?.image?.file_data 
+      ? `data:image/png;base64,${resultData.images?.[0]?.file_data || resultData.image?.file_data}` 
+      : undefined,
     requestId: result.requestId
   };
 }
@@ -120,20 +131,18 @@ export async function editImage(params: EditImageParams): Promise<FalResult> {
     }
   }
 
+  // fal API 编辑模型期望 image_urls 参数（数组格式）
+  // 主图片和参考图片都放在 image_urls 数组中
   const input: any = {
     prompt: finalPrompt,
-    image_url: imageUrl
+    image_urls: [imageUrl, ...referenceUrls]  // 主图片 + 参考图片
   };
-
-  if (referenceUrls.length > 0) {
-    input.reference_images = referenceUrls;
-  }
 
   if (aspectRatio) {
     input.aspect_ratio = aspectRatio;
   }
 
-  if (resolution && model === 'fal-ai/nano-banana-pro') {
+  if (resolution && editModel === 'fal-ai/nano-banana-pro/edit') {
     input.image_size = resolution;
   }
 
@@ -141,6 +150,9 @@ export async function editImage(params: EditImageParams): Promise<FalResult> {
     input.system_prompt = systemInstruction;
   }
 
+  console.log('Edit image input:', JSON.stringify(input, null, 2));
+  console.log('Edit model:', editModel);
+  
   const result = await fal.subscribe(editModel, {
     input,
     logs: true,
@@ -151,9 +163,14 @@ export async function editImage(params: EditImageParams): Promise<FalResult> {
     }
   });
 
+  // fal 返回的数据结构
+  const resultData = result.data as any;
+  
   return {
-    imageUrl: result.images?.[0]?.url,
-    imageBase64: result.images?.[0]?.file_data ? `data:image/png;base64,${result.images[0].file_data}` : undefined,
+    imageUrl: resultData?.images?.[0]?.url || resultData?.image?.url,
+    imageBase64: resultData?.images?.[0]?.file_data || resultData?.image?.file_data 
+      ? `data:image/png;base64,${resultData.images?.[0]?.file_data || resultData.image?.file_data}` 
+      : undefined,
     requestId: result.requestId
   };
 }

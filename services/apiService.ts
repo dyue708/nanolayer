@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+// 使用相对路径，通过 Vite 代理访问后端，避免 CORS 问题
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export interface GenerateImageRequest {
   prompt: string;
@@ -25,6 +26,7 @@ export interface GenerateImageResponse {
   width: number;
   height: number;
   cost: number;
+  imageBase64?: string; // 可选的 base64 数据，用于避免 CORS 问题
 }
 
 export interface AnalyzeImageRequest {

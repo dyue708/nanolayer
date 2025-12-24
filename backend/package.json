@@ -10,7 +10,7 @@
     "start": "node dist/app.js"
   },
   "dependencies": {
-    "@fal-ai/client": "^0.5.0",
+    "@fal-ai/client": "latest",
     "ali-oss": "^6.20.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

@@ -74,13 +74,24 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                 <div
                   key={image.id}
                   className="bg-slate-800 rounded-lg overflow-hidden border border-slate-700 hover:border-blue-500 transition-all cursor-pointer group"
-                  onClick={() => onSelectImage?.(image)}
+                  onClick={() => {
+                    // 同时加载图片和提示词
+                    onSelectImage?.(image);
+                    if (onReusePrompt) {
+                      onReusePrompt(image.prompt);
+                    }
+                  }}
                 >
                   <div className="aspect-square relative overflow-hidden bg-slate-900">
                     <img
-                      src={image.thumbnail_url || image.image_url}
+                      key={`${image.id}-${image.image_url}`}
+                      src={`${image.thumbnail_url || image.image_url}?t=${Date.now()}`}
                       alt={image.prompt.substring(0, 20)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      onError={(e) => {
+                          console.error('Failed to load thumbnail:', image.thumbnail_url || image.image_url);
+                          (e.target as HTMLImageElement).src = image.image_url;
+                      }}
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
@@ -88,13 +99,30 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              // 只重新使用提示词，不加载图片
                               onReusePrompt(image.prompt);
                               onClose();
                             }}
                             className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-bold"
+                            title={t(lang, 'reusePrompt') || 'Reuse Prompt Only'}
                           >
                             <i className="fa-solid fa-rotate-left mr-1"></i>
                             {t(lang, 'reusePrompt') || 'Reuse'}
+                          </button>
+                        )}
+                        {onSelectImage && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // 只加载图片到画布，不重新使用提示词
+                              onSelectImage(image);
+                              onClose();
+                            }}
+                            className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded text-xs font-bold"
+                            title="Load Image to Canvas"
+                          >
+                            <i className="fa-solid fa-image mr-1"></i>
+                            Load
                           </button>
                         )}
                       </div>
