@@ -6,9 +6,10 @@ import AnalysisPanel from './components/AnalysisPanel';
 import ConfigPanel from './components/ConfigPanel';
 import PromptBar from './components/PromptBar';
 import PromptGallery from './components/PromptGallery';
+import HistoryPanel from './components/HistoryPanel';
 import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, Language, AspectRatio, ImageResolution } from './types';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail } from './utils/psdHelper';
-import { generateContentWithGemini, analyzeImageWithGemini } from './services/geminiService';
+import { generateImage, analyzeImage } from './services/apiService';
 import { t } from './utils/i18n';
 import { PromptExample } from './utils/promptExamples';
 
@@ -28,16 +29,16 @@ const App: React.FC = () => {
   const [systemInstruction, setSystemInstruction] = useState('');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio | undefined>(undefined);
   const [resolution, setResolution] = useState<ImageResolution>('1K');
-  const [selectedModel, setSelectedModel] = useState<ImageGenerationModel>('gemini-2.5-flash-image');
+  const [selectedModel, setSelectedModel] = useState<ImageGenerationModel>('fal-ai/nano-banana');
   
   const [referenceLayerIds, setReferenceLayerIds] = useState<string[]>([]);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const pendingPromptRef = useRef<PromptExample | null>(null);
 
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKey, setApiKey] = useState('');
   const [language, setLanguage] = useState<Language>('en');
   const [reusedPrompt, setReusedPrompt] = useState<string | undefined>(undefined);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
@@ -64,17 +65,12 @@ const App: React.FC = () => {
   }, [canvasDims, layers]);
 
   useEffect(() => {
-      const storedKey = localStorage.getItem('nano_api_key');
       const storedLang = localStorage.getItem('nano_lang');
-      if (storedKey) setApiKey(storedKey);
-      else setShowSettings(true);
       if (storedLang && (storedLang === 'en' || storedLang === 'zh')) setLanguage(storedLang as Language);
   }, []);
 
-  const saveSettings = (newKey: string, newLang: Language) => {
-      setApiKey(newKey);
+  const saveSettings = (newLang: Language) => {
       setLanguage(newLang);
-      localStorage.setItem('nano_api_key', newKey);
       localStorage.setItem('nano_lang', newLang);
       setShowSettings(false);
   };
@@ -209,11 +205,6 @@ const App: React.FC = () => {
 
   const handleGeminiAction = async (promptText: string) => {
     if (!promptText.trim()) return;
-    if (!apiKey) {
-        alert(t(language, 'apiKeyRequired'));
-        setShowSettings(true);
-        return;
-    }
     
     if (mode === ToolMode.ANALYZE) {
         const activeLayer = layers.find(l => l.id === activeLayerId);
@@ -223,8 +214,11 @@ const App: React.FC = () => {
         }
         setIsProcessing(true);
         try {
-            const description = await analyzeImageWithGemini(apiKey, canvasToBase64(activeLayer.canvas), promptText);
-            setAnalysisResults(prev => [{ text: description, timestamp: Date.now() }, ...prev]);
+            const result = await analyzeImage({
+                imageBase64: canvasToBase64(activeLayer.canvas),
+                prompt: promptText
+            });
+            setAnalysisResults(prev => [{ text: result.description, timestamp: Date.now() }, ...prev]);
         } catch (err) {
             alert("Analysis failed: " + (err instanceof Error ? err.message : String(err)));
         } finally {
@@ -236,48 +230,60 @@ const App: React.FC = () => {
     setIsProcessing(true);
     try {
       const activeLayer = layers.find(l => l.id === activeLayerId);
-      let base64Img: string | null = null;
-      let finalPrompt = promptText;
-
-      // Selective Edit Logic (Touch Edit): 
-      // We send the FULL image to Gemini with coordinate instructions to modify a specific area.
-      // This ensures the model has full context and produces a full-sized result that matches the original.
-      if (activeLayer) {
-          base64Img = canvasToBase64(activeLayer.canvas);
-          
-          if (selection && selection.width > 5 && selection.height > 5) {
-              const relX = Math.round(((selection.x - activeLayer.x) / activeLayer.canvas.width) * 100);
-              const relY = Math.round(((selection.y - activeLayer.y) / activeLayer.canvas.height) * 100);
-              const relW = Math.round((selection.width / activeLayer.canvas.width) * 100);
-              const relH = Math.round((selection.height / activeLayer.canvas.height) * 100);
-              
-              finalPrompt = `Modify only the specific region located at approximately (X:${relX}%, Y:${relY}%) with size (W:${relW}%, H:${relH}%) in the provided image. Change that specific area to: ${promptText}. IMPORTANT: Everything outside this selection MUST remain exactly 100% identical to the original image background. Do not alter any pixels outside the region of interest. Output the full-sized image at original dimensions.`;
-          }
+      let base64Img: string | undefined = undefined;
+      
+      // 计算选择区域的相对百分比
+      let selectionPercent: { x: number; y: number; width: number; height: number } | undefined = undefined;
+      if (activeLayer && selection && selection.width > 5 && selection.height > 5) {
+          const relX = Math.round(((selection.x - activeLayer.x) / activeLayer.canvas.width) * 100);
+          const relY = Math.round(((selection.y - activeLayer.y) / activeLayer.canvas.height) * 100);
+          const relW = Math.round((selection.width / activeLayer.canvas.width) * 100);
+          const relH = Math.round((selection.height / activeLayer.canvas.height) * 100);
+          selectionPercent = { x: relX, y: relY, width: relW, height: relH };
       }
 
+      // 获取参考图片
       const referenceBase64s: string[] = [];
       referenceLayerIds.forEach(id => {
           const refLayer = layers.find(l => l.id === id);
           if (refLayer) referenceBase64s.push(canvasToBase64(refLayer.canvas));
       });
 
-      const newImageBase64 = await generateContentWithGemini(
-          apiKey,
-          base64Img, 
-          finalPrompt, 
-          selectedModel,
-          systemInstruction,
-          referenceBase64s,
-          aspectRatio,
-          resolution
-      );
-      
+      // 调用后端 API
+      const result = await generateImage({
+          prompt: promptText,
+          model: selectedModel,
+          imageBase64: activeLayer ? canvasToBase64(activeLayer.canvas) : undefined,
+          selection: selectionPercent,
+          referenceImages: referenceBase64s.length > 0 ? referenceBase64s : undefined,
+          systemInstruction: systemInstruction || undefined,
+          aspectRatio: aspectRatio,
+          resolution: resolution
+      });
+
+      // 下载图片并创建 canvas
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = result.imageUrl;
+      });
+
       let resultCanvas: HTMLCanvasElement;
       if (aspectRatio || !activeLayer) {
-          resultCanvas = await base64ToCanvasNatural(newImageBase64);
+          resultCanvas = document.createElement('canvas');
+          resultCanvas.width = result.width;
+          resultCanvas.height = result.height;
+          const ctx = resultCanvas.getContext('2d');
+          if (ctx) ctx.drawImage(img, 0, 0);
       } else {
-          // Ensure dimensions match original layer for seamless composition
-          resultCanvas = await base64ToCanvas(newImageBase64, activeLayer.canvas.width, activeLayer.canvas.height);
+          // 确保尺寸与原图层一致
+          resultCanvas = document.createElement('canvas');
+          resultCanvas.width = activeLayer.canvas.width;
+          resultCanvas.height = activeLayer.canvas.height;
+          const ctx = resultCanvas.getContext('2d');
+          if (ctx) ctx.drawImage(img, 0, 0, activeLayer.canvas.width, activeLayer.canvas.height);
       }
 
       const placeX = activeLayer ? activeLayer.x : (canvasDims.width - resultCanvas.width) / 2;
@@ -293,7 +299,7 @@ const App: React.FC = () => {
           zIndex: layers.length,
           x: placeX,
           y: placeY,
-          cost: selectedModel.includes('pro') ? 0.134 : 0.0396,
+          cost: result.cost,
           prompt: promptText
       };
       
@@ -303,7 +309,7 @@ const App: React.FC = () => {
       if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
 
     } catch (err) {
-        alert("Gemini Operation Failed: " + (err instanceof Error ? err.message : String(err)));
+        alert("Operation Failed: " + (err instanceof Error ? err.message : String(err)));
     } finally {
         setIsProcessing(false);
     }
@@ -388,7 +394,10 @@ const App: React.FC = () => {
                 <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest">{t(language, 'totalCost')}</div>
                 <div className="text-sm font-mono text-emerald-400 font-bold">${totalCost.toFixed(4)}</div>
              </div>
-             <button onClick={() => setShowSettings(true)} className={`p-2 transition-all rounded-lg ${!apiKey ? 'bg-orange-500/10 text-orange-400 animate-pulse' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+             <button onClick={() => setShowHistory(true)} className="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-2">
+                <i className="fa-solid fa-clock-rotate-left text-blue-400"></i> <span className="hidden sm:inline uppercase">{t(language, 'history') || 'History'}</span>
+             </button>
+             <button onClick={() => setShowSettings(true)} className="p-2 transition-all rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
                 <i className="fa-solid fa-gear"></i>
              </button>
         </div>
@@ -503,30 +512,21 @@ const App: React.FC = () => {
                               <button onClick={() => setLanguage('zh')} className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${language === 'zh' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750'}`}>中文</button>
                           </div>
                       </div>
-                      <div>
-                          <label className="block text-[10px] font-black text-slate-500 uppercase mb-3 tracking-widest">{t(language, 'apiKey')}</label>
-                          <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t(language, 'apiKeyPlaceholder')} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 outline-none transition-all" />
-                          <p className="mt-3 text-xs text-slate-500 leading-relaxed">
-                            {t(language, 'apiKeyHelp')}
-                          </p>
-                          <a 
-                            href="https://ai.google.dev/aistudio" 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="mt-2 inline-block text-xs text-blue-400 hover:text-blue-300 font-bold border-b border-blue-500/30 pb-0.5 transition-all"
-                          >
-                            {t(language, 'getKeyLinkText')}
-                          </a>
-                      </div>
                   </div>
                   <div className="p-5 border-t border-slate-800 bg-slate-950/50 flex justify-end gap-3">
                       <button onClick={() => setShowSettings(false)} className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-800 uppercase tracking-widest">{t(language, 'cancel')}</button>
-                      <button onClick={() => saveSettings(apiKey, language)} className="px-6 py-2.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-500 shadow-xl shadow-blue-600/20 uppercase tracking-widest">{t(language, 'save')}</button>
+                      <button onClick={() => saveSettings(language)} className="px-6 py-2.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-500 shadow-xl shadow-blue-600/20 uppercase tracking-widest">{t(language, 'save')}</button>
                   </div>
               </div>
           </div>
       )}
       <PromptGallery isOpen={showGallery} onClose={() => setShowGallery(false)} onSelect={handleSelectFromGallery} lang={language} />
+      <HistoryPanel 
+        isOpen={showHistory} 
+        onClose={() => setShowHistory(false)} 
+        lang={language}
+        onReusePrompt={handleReusePrompt}
+      />
       {isProcessing && (
         <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col items-center justify-center">
             <div className="relative">

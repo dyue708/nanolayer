@@ -38,7 +38,7 @@ export interface SelectionRect {
   height: number;
 }
 
-export type ImageGenerationModel = 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview';
+export type ImageGenerationModel = 'fal-ai/nano-banana' | 'fal-ai/nano-banana-pro';
 
 export type Language = 'en' | 'zh';
 

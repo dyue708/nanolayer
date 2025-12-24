@@ -119,35 +119,35 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
             <label className="block text-[10px] text-slate-500 uppercase font-bold mb-2">{t(lang, 'modelSelectTitle')}</label>
             <div className="space-y-2">
                 <button 
-                    onClick={() => onSelectModel('gemini-2.5-flash-image')}
+                    onClick={() => onSelectModel('fal-ai/nano-banana')}
                     className={`w-full flex items-center p-2.5 rounded-lg border transition-all text-left group ${
-                        selectedModel === 'gemini-2.5-flash-image' 
+                        selectedModel === 'fal-ai/nano-banana' 
                         ? 'bg-blue-900/20 border-blue-500/50 ring-1 ring-blue-500/20' 
                         : 'bg-slate-800 border-slate-700 hover:border-slate-600'
                     }`}
                 >
-                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'gemini-2.5-flash-image' ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/nano-banana' ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
                         <i className="fa-solid fa-bolt"></i>
                     </div>
                     <div>
-                        <div className={`text-xs font-bold ${selectedModel === 'gemini-2.5-flash-image' ? 'text-blue-200' : 'text-slate-300'}`}>Gemini 2.5 Flash</div>
-                        <div className="text-[10px] text-slate-500 group-hover:text-slate-400">Nano Banana - Fast</div>
+                        <div className={`text-xs font-bold ${selectedModel === 'fal-ai/nano-banana' ? 'text-blue-200' : 'text-slate-300'}`}>Nano Banana</div>
+                        <div className="text-[10px] text-slate-500 group-hover:text-slate-400">Fast Generation</div>
                     </div>
                 </button>
 
                 <button 
-                    onClick={() => onSelectModel('gemini-3-pro-image-preview')}
+                    onClick={() => onSelectModel('fal-ai/nano-banana-pro')}
                     className={`w-full flex items-center p-2.5 rounded-lg border transition-all text-left group ${
-                        selectedModel === 'gemini-3-pro-image-preview' 
+                        selectedModel === 'fal-ai/nano-banana-pro' 
                         ? 'bg-purple-900/20 border-purple-500/50 ring-1 ring-purple-500/20' 
                         : 'bg-slate-800 border-slate-700 hover:border-slate-600'
                     }`}
                 >
-                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'gemini-3-pro-image-preview' ? 'bg-purple-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/nano-banana-pro' ? 'bg-purple-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
                         <i className="fa-solid fa-gem"></i>
                     </div>
                     <div>
-                        <div className={`text-xs font-bold ${selectedModel === 'gemini-3-pro-image-preview' ? 'text-purple-200' : 'text-slate-300'}`}>Gemini 3.0 Pro</div>
+                        <div className={`text-xs font-bold ${selectedModel === 'fal-ai/nano-banana-pro' ? 'text-purple-200' : 'text-slate-300'}`}>Nano Banana Pro</div>
                         <div className="text-[10px] text-slate-500 group-hover:text-slate-400">High Fidelity Image</div>
                     </div>
                 </button>
@@ -211,8 +211,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                     <select 
                         value={resolution}
                         onChange={(e) => onResolutionChange(e.target.value as ImageResolution)}
-                        disabled={selectedModel !== 'gemini-3-pro-image-preview'}
-                        className={`w-full bg-slate-800 border border-slate-700 rounded text-xs text-white p-2 focus:border-blue-500 outline-none ${selectedModel !== 'gemini-3-pro-image-preview' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-750'}`}
+                        disabled={selectedModel !== 'fal-ai/nano-banana-pro'}
+                        className={`w-full bg-slate-800 border border-slate-700 rounded text-xs text-white p-2 focus:border-blue-500 outline-none ${selectedModel !== 'fal-ai/nano-banana-pro' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-750'}`}
                     >
                         <option value="1K">1K (Std)</option>
                         <option value="2K">2K (Pro)</option>
