@@ -55,6 +55,7 @@ export class DbService {
     return {
       images: (images || []).map(img => ({
         ...img,
+        cost: typeof img.cost === 'string' ? parseFloat(img.cost) : (img.cost || 0),
         metadata: img.metadata ? JSON.parse(img.metadata as string) : null
       })),
       total: totalResult?.total || 0
@@ -74,6 +75,7 @@ export class DbService {
 
     return {
       ...image,
+      cost: typeof image.cost === 'string' ? parseFloat(image.cost) : (image.cost || 0),
       metadata: image.metadata ? JSON.parse(image.metadata as string) : null
     };
   }

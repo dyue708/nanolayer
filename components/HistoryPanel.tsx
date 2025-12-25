@@ -133,7 +133,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                       {image.prompt.substring(0, 30)}...
                     </p>
                     <div className="flex justify-between items-center text-[10px] text-slate-500">
-                      <span>${image.cost.toFixed(4)}</span>
+                      <span>${(typeof image.cost === 'number' ? image.cost : parseFloat(image.cost || '0')).toFixed(4)}</span>
                       <span>{new Date(image.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
