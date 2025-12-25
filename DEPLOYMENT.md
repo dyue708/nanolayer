@@ -477,7 +477,7 @@ DB_TYPE=postgres
 # Supabase 连接信息
 DB_HOST=db.xxxxx.supabase.co
 DB_PORT=5432
-# 或使用连接池（推荐，性能更好）
+# 或使用连接池（推荐，性能更好，且通常只支持 IPv4）
 # DB_PORT=6543
 
 DB_NAME=postgres
@@ -486,7 +486,32 @@ DB_PASSWORD=your_supabase_password
 
 # Supabase 要求 SSL 连接
 DB_SSL=true
+
+# 如果遇到 IPv6 连接问题（ENETUNREACH），强制使用 IPv4
+# 设置为 true 会自动将域名解析为 IPv4 地址
+DB_FORCE_IPV4=true
 ```
+
+**注意：IPv6 连接问题**
+
+如果遇到 `ENETUNREACH` 错误（无法连接 IPv6 地址），可以：
+
+1. **方法 1（推荐）**：使用连接池端口 `6543`，它通常只支持 IPv4：
+   ```bash
+   DB_PORT=6543
+   ```
+
+2. **方法 2**：启用 IPv4 强制解析：
+   ```bash
+   DB_FORCE_IPV4=true
+   ```
+
+3. **方法 3**：手动解析域名并直接使用 IPv4 地址：
+   ```bash
+   # 在服务器上运行：nslookup db.xxxxx.supabase.co
+   # 然后使用返回的 IPv4 地址
+   DB_HOST=xxx.xxx.xxx.xxx  # 使用 IPv4 地址而不是域名
+   ```
 
 **4. 验证连接：**
 

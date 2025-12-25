@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync } from 'fs';
 import dotenv from 'dotenv';
+import dns from 'dns';
+import { promisify } from 'util';
 
 // 确保环境变量已加载
 dotenv.config();
@@ -150,17 +152,50 @@ export class PostgreSQLDatabase implements IDatabase {
       throw new Error('PostgreSQL configuration is missing. Please set DB_HOST, DB_NAME, DB_USER, and DB_PASSWORD in .env file');
     }
 
+    // 如果 host 是域名且需要强制 IPv4，先解析为 IPv4 地址
+    // 否则直接使用 host（可能是 IP 地址或不需要强制 IPv4）
+    const resolvedHost = this.resolveHost(host);
+
     this.pool = new Pool({
-      host,
+      host: resolvedHost,
       port,
       database,
       user,
       password,
-      ssl
+      ssl,
+      connectionTimeoutMillis: 10000
     });
 
     // 测试连接并初始化表（异步，但不阻塞构造函数）
     this.initialize();
+  }
+
+  /**
+   * 解析主机名为 IPv4 地址（如果需要）
+   * 如果 host 已经是 IP 地址，直接返回
+   * 如果 host 是域名，解析为 IPv4 地址
+   */
+  private resolveHost(host: string): string {
+    // 如果已经是 IP 地址，直接返回
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+      return host;
+    }
+
+    // 如果环境变量要求强制 IPv4，解析为 IPv4
+    if (process.env.DB_FORCE_IPV4 === 'true') {
+      try {
+        // 使用同步 DNS 解析（仅在构造函数中调用，可以接受）
+        const addresses = dns.resolve4Sync(host);
+        if (addresses && addresses.length > 0) {
+          console.log(`Resolved ${host} to IPv4: ${addresses[0]}`);
+          return addresses[0];
+        }
+      } catch (error) {
+        console.warn(`Failed to resolve ${host} to IPv4, using original host:`, error);
+      }
+    }
+
+    return host;
   }
 
   private async initialize() {
