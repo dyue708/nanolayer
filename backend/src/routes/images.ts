@@ -92,7 +92,7 @@ router.post('/generate', async (req, res) => {
 
     // 获取图片数据
     // 优先使用 base64，如果没有则使用 URL
-    let imageData = falResult.imageBase64;
+    let imageData: string | undefined = falResult.imageBase64;
     if (!imageData && falResult.imageUrl) {
       // 如果只有 URL，尝试下载并转换为 base64（用于避免 CORS 问题）
       try {
@@ -103,23 +103,28 @@ router.post('/generate', async (req, res) => {
         imageData = `data:image/png;base64,${base64}`;
       } catch (error) {
         console.warn('Failed to convert image URL to base64, using URL directly:', error);
-        imageData = falResult.imageUrl!;
+        imageData = falResult.imageUrl;
       }
+    }
+    
+    if (!imageData) {
+      return res.status(500).json({ error: 'No image data available' });
     }
     
     // 获取图片尺寸
     const dimensions = await getImageDimensions(imageData);
 
     // 上传到 OSS（如果配置了 OSS，否则使用 fal 返回的 URL）
-    let uploadResult;
+    let uploadResult: { imageUrl: string; thumbnailUrl: string };
     try {
       uploadResult = await uploadImage(imageData, userId ? parseInt(userId) : undefined);
     } catch (error: any) {
       // 如果 OSS 未配置，直接使用 fal 返回的 URL
       console.warn('OSS upload failed, using fal URL:', error.message);
+      const fallbackUrl = falResult.imageUrl || imageData;
       uploadResult = {
-        imageUrl: falResult.imageUrl || imageData,
-        thumbnailUrl: falResult.imageUrl || imageData
+        imageUrl: fallbackUrl,
+        thumbnailUrl: fallbackUrl
       };
     }
 
@@ -245,8 +250,14 @@ router.get('/proxy', async (req, res) => {
         console.log('Fetching from OSS, object name:', objectName);
         
         // 使用 OSS SDK 的 get 方法获取文件
-        const result = await ossClient.get(objectName);
-        buffer = Buffer.from(result.content);
+        const result = await (ossClient as any).get(objectName);
+        if (result.content) {
+          buffer = Buffer.isBuffer(result.content) 
+            ? result.content 
+            : Buffer.from(result.content);
+        } else {
+          throw new Error('No content returned from OSS');
+        }
         contentType = result.res?.headers?.['content-type'] || result.res?.headers?.['Content-Type'] || 'image/png';
         console.log('OSS get successful, content type:', contentType);
       } catch (ossError: any) {

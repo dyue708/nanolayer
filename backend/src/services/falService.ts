@@ -49,8 +49,9 @@ export async function uploadImageToFal(imageBase64: string): Promise<string> {
     const buffer = Buffer.from(base64Data, 'base64');
     
     // 上传到 fal storage
-    // fal.storage.upload 可以接受 Buffer 或 base64 字符串
-    const url = await fal.storage.upload(buffer);
+    // fal.storage.upload 可以接受 Buffer、Blob 或 base64 字符串
+    // 使用类型断言，因为 fal SDK 实际上支持 Buffer
+    const url = await fal.storage.upload(buffer as any);
     
     console.log('Image uploaded to fal storage:', url);
     return url;
