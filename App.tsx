@@ -250,7 +250,8 @@ const App: React.FC = () => {
       });
 
       // 调用后端 API
-      const result = await generateImage({
+      let result: any;
+      result = await generateImage({
           prompt: promptText,
           model: selectedModel,
           imageBase64: activeLayer ? canvasToBase64(activeLayer.canvas) : undefined,

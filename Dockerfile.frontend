@@ -18,6 +18,7 @@ COPY components ./components
 COPY services ./services
 COPY utils ./utils
 COPY types.ts ./
+COPY vite-env.d.ts ./
 
 # 构建项目
 RUN npm run build
