@@ -151,6 +151,23 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                         <div className="text-[10px] text-slate-500 group-hover:text-slate-400">High Fidelity Image</div>
                     </div>
                 </button>
+
+                <button 
+                    onClick={() => onSelectModel('fal-ai/gpt-image-1.5')}
+                    className={`w-full flex items-center p-2.5 rounded-lg border transition-all text-left group ${
+                        selectedModel === 'fal-ai/gpt-image-1.5' 
+                        ? 'bg-green-900/20 border-green-500/50 ring-1 ring-green-500/20' 
+                        : 'bg-slate-800 border-slate-700 hover:border-slate-600'
+                    }`}
+                >
+                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/gpt-image-1.5' ? 'bg-green-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                        <i className="fa-solid fa-sparkles"></i>
+                    </div>
+                    <div>
+                        <div className={`text-xs font-bold ${selectedModel === 'fal-ai/gpt-image-1.5' ? 'text-green-200' : 'text-slate-300'}`}>GPT Image 1.5</div>
+                        <div className="text-[10px] text-slate-500 group-hover:text-slate-400">High Quality Generation</div>
+                    </div>
+                </button>
             </div>
         </section>
 

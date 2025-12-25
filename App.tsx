@@ -699,8 +699,20 @@ const App: React.FC = () => {
       {isProcessing && (
         <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col items-center justify-center">
             <div className="relative">
-                <div className={`w-20 h-20 border-4 border-t-transparent rounded-full animate-spin ${selectedModel.includes('pro') ? 'border-purple-500/20 border-t-purple-500' : 'border-blue-500/20 border-t-blue-500'}`}></div>
-                <div className={`absolute inset-0 flex items-center justify-center text-2xl ${selectedModel.includes('pro') ? 'text-purple-400' : 'text-blue-400'}`}>
+                <div className={`w-20 h-20 border-4 border-t-transparent rounded-full animate-spin ${
+                    selectedModel.includes('gpt-image-1.5') 
+                        ? 'border-green-500/20 border-t-green-500' 
+                        : selectedModel.includes('pro') 
+                        ? 'border-purple-500/20 border-t-purple-500' 
+                        : 'border-blue-500/20 border-t-blue-500'
+                }`}></div>
+                <div className={`absolute inset-0 flex items-center justify-center text-2xl ${
+                    selectedModel.includes('gpt-image-1.5') 
+                        ? 'text-green-400' 
+                        : selectedModel.includes('pro') 
+                        ? 'text-purple-400' 
+                        : 'text-blue-400'
+                }`}>
                     <i className="fa-solid fa-wand-magic-sparkles fa-beat"></i>
                 </div>
             </div>

@@ -3,7 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export interface GenerateImageRequest {
   prompt: string;
-  model: 'fal-ai/nano-banana' | 'fal-ai/nano-banana-pro';
+  model: 'fal-ai/nano-banana' | 'fal-ai/nano-banana-pro' | 'fal-ai/gpt-image-1.5';
   imageBase64?: string;
   selection?: {
     x: number;

@@ -38,7 +38,7 @@ export interface SelectionRect {
   height: number;
 }
 
-export type ImageGenerationModel = 'fal-ai/nano-banana' | 'fal-ai/nano-banana-pro';
+export type ImageGenerationModel = 'fal-ai/nano-banana' | 'fal-ai/nano-banana-pro' | 'fal-ai/gpt-image-1.5';
 
 export type Language = 'en' | 'zh';
 

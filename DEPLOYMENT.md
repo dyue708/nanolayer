@@ -381,6 +381,12 @@ COST_NANO_BANANA_PRO=0.134
 COST_NANO_BANANA_EDIT=0.0396
 COST_NANO_BANANA_PRO_EDIT=0.134
 
+# GPT Image 1.5 模型成本（基于分辨率，自动计算）
+# 1024x1024: $0.133
+# 1024x1536 或 1536x1024: $0.200
+# 其他尺寸: $0.133（默认值）
+# 注意：gpt-image-1.5 的成本会根据实际生成的图片尺寸自动计算，无需手动配置
+
 # 数据库配置（SQLite - 默认）
 # DB_TYPE=sqlite
 
