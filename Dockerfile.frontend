@@ -12,7 +12,8 @@ COPY index.html ./
 RUN npm ci
 
 # 复制源代码
-COPY src ./src
+COPY App.tsx ./
+COPY index.tsx ./
 COPY components ./components
 COPY services ./services
 COPY utils ./utils
