@@ -33,6 +33,35 @@
 
 ## 部署架构
 
+### Docker 部署架构（推荐）
+
+```
+┌─────────────────────────────────────┐
+│   Docker 网络: nanolayer-network    │
+│                                     │
+│  ┌──────────────┐  ┌─────────────┐ │
+│  │   前端容器    │  │  后端容器    │ │
+│  │  (Nginx)     │  │  (Node.js)  │ │
+│  │  内部: 80    │  │  内部: 3000  │ │
+│  └──────┬───────┘  └──────┬───────┘ │
+│         │                 │         │
+└─────────┼─────────────────┼─────────┘
+          │                 │
+     ┌────▼────┐       ┌────▼────┐
+     │ 8080    │       │ 3001    │
+     │ (主机)  │       │ (主机)  │
+     └─────────┘       └─────────┘
+          │                 │
+          └─────────┬─────────┘
+                    │
+          ┌─────────▼─────────┐
+          │  Supabase 数据库   │
+          │  (外部云服务)      │
+          └───────────────────┘
+```
+
+### 传统部署架构
+
 ```
 ┌─────────────┐
 │   Nginx     │ (反向代理 + SSL)
@@ -282,13 +311,13 @@ docker-compose down
 后端：
 ```bash
 docker build -f Dockerfile.backend -t nanolayer-backend ./backend
-docker run -d -p 3000:3000 --env-file ./backend/.env -v $(pwd)/backend/data:/app/data nanolayer-backend
+docker run -d -p 3001:3000 --env-file ./backend/.env -v $(pwd)/backend/data:/app/data nanolayer-backend
 ```
 
 前端：
 ```bash
 docker build -f Dockerfile.frontend -t nanolayer-frontend .
-docker run -d -p 80:80 nanolayer-frontend
+docker run -d -p 8080:80 nanolayer-frontend
 ```
 
 **Docker 配置文件说明：**
@@ -296,7 +325,31 @@ docker run -d -p 80:80 nanolayer-frontend
 - `Dockerfile.backend` - 后端 Docker 镜像配置
 - `Dockerfile.frontend` - 前端 Docker 镜像配置
 - `docker-compose.yml` - Docker Compose 编排配置
+- `nginx.conf.docker` - Docker 前端容器 Nginx 配置
 - `.dockerignore` - Docker 构建忽略文件
+
+**端口说明：**
+
+- **前端**: 8080 端口（避免与现有 Nginx 服务冲突）
+- **后端**: 3001 端口（映射到容器内部 3000 端口）
+- 容器内部通信通过 Docker 网络，前端通过容器名 `nanolayer-backend` 访问后端
+
+**与现有服务共存：**
+
+如果服务器上已有其他 Docker 服务（如 Nginx、Dify 等），Nanolayer 会：
+- 使用独立的 Docker 网络 `nanolayer-network`，避免网络冲突
+- 使用独立端口（8080/3001），避免端口冲突
+- 不影响现有服务的运行
+
+如需通过现有 Nginx 反向代理访问，可在现有 Nginx 配置中添加：
+
+```nginx
+location /nanolayer {
+    proxy_pass http://localhost:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+```
 
 ## 环境变量配置
 
@@ -327,13 +380,38 @@ COST_NANO_BANANA=0.0396
 COST_NANO_BANANA_PRO=0.134
 COST_NANO_BANANA_EDIT=0.0396
 COST_NANO_BANANA_PRO_EDIT=0.134
+
+# 数据库配置（SQLite - 默认）
+# DB_TYPE=sqlite
+
+# 数据库配置（PostgreSQL - 本地或远程）
+# DB_TYPE=postgres
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=nanolayer
+# DB_USER=postgres
+# DB_PASSWORD=your_password
+# DB_SSL=false
+
+# 数据库配置（Supabase - 推荐）
+# DB_TYPE=postgres
+# DB_HOST=db.xxxxx.supabase.co
+# DB_PORT=5432
+# # 或使用连接池（推荐）
+# # DB_PORT=6543
+# DB_NAME=postgres
+# DB_USER=postgres.xxxxx
+# DB_PASSWORD=your_supabase_password
+# DB_SSL=true
 ```
 
 ### 前端环境变量（`.env.production`）
 
 ```bash
-VITE_API_BASE_URL=https://api.yourdomain.com/api
+VITE_API_BASE_URL=http://localhost:3001/api
 ```
+
+**注意**: Docker 部署时，前端容器内的 `VITE_API_BASE_URL` 应指向后端容器，但构建时需要使用实际访问地址。如果通过现有 Nginx 代理，应使用代理后的地址。
 
 ## 数据库配置
 
@@ -358,12 +436,97 @@ CREATE USER nanolayer_user WITH PASSWORD 'your_password';
 GRANT ALL PRIVILEGES ON DATABASE nanolayer TO nanolayer_user;
 ```
 
-3. 修改后端代码使用 PostgreSQL（需要安装 `pg` 包）：
+3. 配置环境变量（`backend/.env`）：
+
+```bash
+DB_TYPE=postgres
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=nanolayer
+DB_USER=nanolayer_user
+DB_PASSWORD=your_password
+DB_SSL=false
+```
+
+### Supabase（云数据库，推荐用于生产环境）
+
+Supabase 是基于 PostgreSQL 的云数据库服务，提供自动备份、监控和管理功能。
+
+**1. 创建 Supabase 项目：**
+
+1. 访问 [Supabase](https://supabase.com) 并注册账号
+2. 创建新项目
+3. 等待项目初始化完成（约 2 分钟）
+
+**2. 获取连接信息：**
+
+在 Supabase 项目设置中，进入 "Database" -> "Connection string" -> "URI" 或查看 "Connection parameters"：
+
+- **Host**: `db.xxxxx.supabase.co`
+- **Port**: `5432`（直接连接）或 `6543`（连接池，推荐）
+- **Database**: 通常是 `postgres`
+- **User**: 项目用户名（在连接参数中显示）
+- **Password**: 项目数据库密码（在项目设置中设置）
+
+**3. 配置环境变量（`backend/.env`）：**
+
+```bash
+# 数据库类型
+DB_TYPE=postgres
+
+# Supabase 连接信息
+DB_HOST=db.xxxxx.supabase.co
+DB_PORT=5432
+# 或使用连接池（推荐，性能更好）
+# DB_PORT=6543
+
+DB_NAME=postgres
+DB_USER=postgres.xxxxx  # Supabase 项目用户名
+DB_PASSWORD=your_supabase_password
+
+# Supabase 要求 SSL 连接
+DB_SSL=true
+```
+
+**4. 验证连接：**
+
+启动后端服务，检查日志确认连接成功：
 
 ```bash
 cd backend
-npm install pg
+npm run dev
 ```
+
+成功连接会显示：
+```
+Connected to PostgreSQL database: postgres.xxxxx@db.xxxxx.supabase.co:5432/postgres
+PostgreSQL tables initialized successfully
+```
+
+**5. 迁移数据（如需要）：**
+
+如果从 SQLite 迁移到 Supabase，使用迁移脚本：
+
+```bash
+cd backend
+npx tsx scripts/migrate-sqlite-to-postgres.ts
+```
+
+**Supabase 优势：**
+
+- ✅ 自动备份和恢复
+- ✅ 实时监控和日志
+- ✅ 无需维护数据库服务器
+- ✅ 自动扩展
+- ✅ 内置连接池（端口 6543）
+- ✅ 免费额度充足（适合中小型项目）
+
+**注意事项：**
+
+- Supabase 要求 SSL 连接，必须设置 `DB_SSL=true`
+- 建议使用连接池端口（6543）以获得更好的性能
+- 生产环境建议设置强密码并启用 IP 白名单（在 Supabase 项目设置中）
+- 定期检查 Supabase 项目的使用量和配额
 
 ## OSS 配置
 

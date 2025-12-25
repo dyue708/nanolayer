@@ -1,5 +1,10 @@
 version: '3.8'
 
+networks:
+  nanolayer-network:
+    driver: bridge
+    name: nanolayer-network
+
 services:
   backend:
     build:
@@ -7,7 +12,7 @@ services:
       dockerfile: ../Dockerfile.backend
     container_name: nanolayer-backend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -17,6 +22,8 @@ services:
       - ./backend/data:/app/data
       - ./backend/logs:/app/logs
     restart: unless-stopped
+    networks:
+      - nanolayer-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
@@ -30,10 +37,12 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: nanolayer-frontend
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - nanolayer-network
     environment:
-      - VITE_API_BASE_URL=http://localhost:3000/api
+      - VITE_API_BASE_URL=http://localhost:3001/api
 
