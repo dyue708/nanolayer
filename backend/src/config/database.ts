@@ -173,7 +173,7 @@ export class PostgreSQLDatabase implements IDatabase {
   /**
    * 解析主机名为 IPv4 地址（如果需要）
    * 如果 host 已经是 IP 地址，直接返回
-   * 如果 host 是域名，解析为 IPv4 地址
+   * 如果 host 是域名，尝试解析为 IPv4 地址
    */
   private resolveHost(host: string): string {
     // 如果已经是 IP 地址，直接返回
@@ -181,17 +181,21 @@ export class PostgreSQLDatabase implements IDatabase {
       return host;
     }
 
-    // 如果环境变量要求强制 IPv4，解析为 IPv4
-    if (process.env.DB_FORCE_IPV4 === 'true') {
+    // 默认尝试解析为 IPv4（避免 IPv6 连接问题）
+    // 如果 DB_FORCE_IPV4 设置为 false，则跳过解析
+    const forceIPv4 = process.env.DB_FORCE_IPV4 !== 'false';
+    
+    if (forceIPv4) {
       try {
         // 使用同步 DNS 解析（仅在构造函数中调用，可以接受）
         const addresses = dns.resolve4Sync(host);
         if (addresses && addresses.length > 0) {
-          console.log(`Resolved ${host} to IPv4: ${addresses[0]}`);
+          console.log(`✓ Resolved ${host} to IPv4: ${addresses[0]}`);
           return addresses[0];
         }
-      } catch (error) {
-        console.warn(`Failed to resolve ${host} to IPv4, using original host:`, error);
+      } catch (error: any) {
+        console.warn(`⚠ Failed to resolve ${host} to IPv4 (${error.code || error.message}), using original host`);
+        console.warn(`  This may cause IPv6 connection issues. Consider setting DB_FORCE_IPV4=true or using IPv4 address directly.`);
       }
     }
 
