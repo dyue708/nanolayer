@@ -8,25 +8,22 @@ export class DbService {
   async createImageHistory(params: CreateImageHistoryParams): Promise<number> {
     const { user_id, prompt, model, image_url, thumbnail_url, cost, metadata } = params;
     
-    return new Promise((resolve, reject) => {
-      db.getDb().run(
-        `INSERT INTO image_history (user_id, prompt, model, image_url, thumbnail_url, cost, metadata)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          user_id || null,
-          prompt,
-          model,
-          image_url,
-          thumbnail_url || null,
-          cost,
-          metadata ? JSON.stringify(metadata) : null
-        ],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this.lastID);
-        }
-      );
-    });
+    const result = await db.run(
+      `INSERT INTO image_history (user_id, prompt, model, image_url, thumbnail_url, cost, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        user_id || null,
+        prompt,
+        model,
+        image_url,
+        thumbnail_url || null,
+        cost,
+        metadata ? JSON.stringify(metadata) : null
+      ]
+    );
+    
+    // lastID 现在应该已经通过 RETURNING 子句返回
+    return result.lastID || 0;
   }
 
   /**
@@ -44,28 +41,16 @@ export class DbService {
     }
 
     // 获取总数
-    const totalResult = await new Promise<{ total: number } | undefined>((resolve, reject) => {
-      db.getDb().get(
-        `SELECT COUNT(*) as total FROM image_history ${whereClause}`,
-        params,
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row as { total: number } | undefined);
-        }
-      );
-    });
+    const totalResult = await db.get<{ total: number }>(
+      `SELECT COUNT(*) as total FROM image_history ${whereClause}`,
+      params
+    );
 
     // 获取列表
-    const images = await new Promise<ImageHistory[] | undefined>((resolve, reject) => {
-      db.getDb().all(
-        `SELECT * FROM image_history ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-        [...params, limit, offset],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows as ImageHistory[] | undefined);
-        }
-      );
-    });
+    const images = await db.all<ImageHistory>(
+      `SELECT * FROM image_history ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
 
     return {
       images: (images || []).map(img => ({
@@ -80,16 +65,10 @@ export class DbService {
    * 根据 ID 获取图片详情
    */
   async getImageById(id: number): Promise<ImageHistory | null> {
-    const image = await new Promise<ImageHistory | undefined>((resolve, reject) => {
-      db.getDb().get(
-        'SELECT * FROM image_history WHERE id = ?',
-        [id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row as ImageHistory | undefined);
-        }
-      );
-    });
+    const image = await db.get<ImageHistory>(
+      'SELECT * FROM image_history WHERE id = ?',
+      [id]
+    );
 
     if (!image) return null;
 
