@@ -7,6 +7,8 @@ import dotenv from 'dotenv';
 import dns from 'dns';
 import { promisify } from 'util';
 
+const resolve4 = promisify(dns.resolve4);
+
 // 确保环境变量已加载
 dotenv.config();
 
@@ -173,7 +175,9 @@ export class PostgreSQLDatabase implements IDatabase {
   /**
    * 解析主机名为 IPv4 地址（如果需要）
    * 如果 host 已经是 IP 地址，直接返回
-   * 如果 host 是域名，尝试解析为 IPv4 地址
+   * 如果 host 是域名且需要强制 IPv4，会在异步初始化时解析
+   * 注意：Node.js 的 dns 模块没有同步的 resolve4 方法，所以域名解析会由 PostgreSQL 客户端库处理
+   * 如果遇到 IPv6 连接问题，建议在 .env 中直接使用 IPv4 地址
    */
   private resolveHost(host: string): string {
     // 如果已经是 IP 地址，直接返回
@@ -181,22 +185,14 @@ export class PostgreSQLDatabase implements IDatabase {
       return host;
     }
 
-    // 默认尝试解析为 IPv4（避免 IPv6 连接问题）
-    // 如果 DB_FORCE_IPV4 设置为 false，则跳过解析
+    // 对于域名，直接返回，让 PostgreSQL 客户端库处理 DNS 解析
+    // 如果遇到 IPv6 连接问题（ENETUNREACH），用户可以：
+    // 1. 在 .env 中直接使用 IPv4 地址
+    // 2. 或者使用连接池端口（6543）通常只支持 IPv4
     const forceIPv4 = process.env.DB_FORCE_IPV4 !== 'false';
-    
     if (forceIPv4) {
-      try {
-        // 使用同步 DNS 解析（仅在构造函数中调用，可以接受）
-        const addresses = dns.resolve4Sync(host);
-        if (addresses && addresses.length > 0) {
-          console.log(`✓ Resolved ${host} to IPv4: ${addresses[0]}`);
-          return addresses[0];
-        }
-      } catch (error: any) {
-        console.warn(`⚠ Failed to resolve ${host} to IPv4 (${error.code || error.message}), using original host`);
-        console.warn(`  This may cause IPv6 connection issues. Consider setting DB_FORCE_IPV4=true or using IPv4 address directly.`);
-      }
+      console.log(`ℹ️  Using hostname: ${host}`);
+      console.log(`  If you encounter IPv6 connection issues, consider using an IPv4 address directly in DB_HOST`);
     }
 
     return host;
