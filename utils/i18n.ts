@@ -83,7 +83,6 @@ export const translations = {
     allCategories: "All Categories",
     history: "History",
     noHistory: "No history yet",
-    reusePrompt: "Reuse",
   },
   zh: {
     appTitle: "NanoLayer",
@@ -166,7 +165,6 @@ export const translations = {
     allCategories: "全部",
     history: "历史记录",
     noHistory: "暂无历史记录",
-    reusePrompt: "重用",
   }
 };
 

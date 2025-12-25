@@ -228,6 +228,7 @@ const App: React.FC = () => {
     }
 
     setIsProcessing(true);
+    let result: any = undefined;
     try {
       const activeLayer = layers.find(l => l.id === activeLayerId);
       let base64Img: string | undefined = undefined;
@@ -250,7 +251,6 @@ const App: React.FC = () => {
       });
 
       // 调用后端 API
-      let result: any;
       result = await generateImage({
           prompt: promptText,
           model: selectedModel,
