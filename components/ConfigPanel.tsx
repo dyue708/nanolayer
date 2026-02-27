@@ -168,6 +168,23 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                         <div className="text-[10px] text-slate-500 group-hover:text-slate-400">High Quality Generation</div>
                     </div>
                 </button>
+
+                <button 
+                    onClick={() => onSelectModel('fal-ai/nano-banana-2')}
+                    className={`w-full flex items-center p-2.5 rounded-lg border transition-all text-left group ${
+                        selectedModel === 'fal-ai/nano-banana-2' 
+                        ? 'bg-amber-900/20 border-amber-500/50 ring-1 ring-amber-500/20' 
+                        : 'bg-slate-800 border-slate-700 hover:border-slate-600'
+                    }`}
+                >
+                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/nano-banana-2' ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                        <i className="fa-solid fa-bolt-lightning"></i>
+                    </div>
+                    <div>
+                        <div className={`text-xs font-bold ${selectedModel === 'fal-ai/nano-banana-2' ? 'text-amber-200' : 'text-slate-300'}`}>Nano Banana 2</div>
+                        <div className="text-[10px] text-slate-500 group-hover:text-slate-400">Balanced Speed & Quality</div>
+                    </div>
+                </button>
             </div>
         </section>
 
@@ -228,9 +245,18 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                     <select 
                         value={resolution}
                         onChange={(e) => onResolutionChange(e.target.value as ImageResolution)}
-                        disabled={selectedModel !== 'fal-ai/nano-banana-pro'}
-                        className={`w-full bg-slate-800 border border-slate-700 rounded text-xs text-white p-2 focus:border-blue-500 outline-none ${selectedModel !== 'fal-ai/nano-banana-pro' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-750'}`}
+                        disabled={
+                          selectedModel !== 'fal-ai/nano-banana-pro' &&
+                          selectedModel !== 'fal-ai/nano-banana-2'
+                        }
+                        className={`w-full bg-slate-800 border border-slate-700 rounded text-xs text-white p-2 focus:border-blue-500 outline-none ${
+                          selectedModel !== 'fal-ai/nano-banana-pro' &&
+                          selectedModel !== 'fal-ai/nano-banana-2'
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'cursor-pointer hover:bg-slate-750'
+                        }`}
                     >
+                        <option value="0.5K">0.5K (Fast / Cheap)</option>
                         <option value="1K">1K (Std)</option>
                         <option value="2K">2K (Pro)</option>
                         <option value="4K">4K (Pro)</option>

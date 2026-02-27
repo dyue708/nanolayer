@@ -9,16 +9,24 @@ if (process.env.FAL_KEY) {
 
 export interface GenerateImageParams {
   prompt: string;
-  model: 'fal-ai/nano-banana' | 'fal-ai/nano-banana-pro' | 'fal-ai/gpt-image-1.5';
+  model:
+    | 'fal-ai/nano-banana'
+    | 'fal-ai/nano-banana-pro'
+    | 'fal-ai/gpt-image-1.5'
+    | 'fal-ai/nano-banana-2';
   aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
-  resolution?: '1K' | '2K' | '4K';
+  resolution?: '0.5K' | '1K' | '2K' | '4K';
   systemInstruction?: string;
 }
 
 export interface EditImageParams {
   prompt: string;
   imageBase64: string;
-  model: 'fal-ai/nano-banana' | 'fal-ai/nano-banana-pro' | 'fal-ai/gpt-image-1.5';
+  model:
+    | 'fal-ai/nano-banana'
+    | 'fal-ai/nano-banana-pro'
+    | 'fal-ai/gpt-image-1.5'
+    | 'fal-ai/nano-banana-2';
   selection?: {
     x: number;
     y: number;
@@ -28,7 +36,7 @@ export interface EditImageParams {
   referenceImages?: string[];
   systemInstruction?: string;
   aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
-  resolution?: '1K' | '2K' | '4K';
+  resolution?: '0.5K' | '1K' | '2K' | '4K';
 }
 
 export interface FalResult {
@@ -75,8 +83,11 @@ export async function generateImage(params: GenerateImageParams): Promise<FalRes
     input.aspect_ratio = aspectRatio;
   }
 
-  // 只有 nano-banana-pro 支持 image_size 参数
-  if (resolution && model === 'fal-ai/nano-banana-pro') {
+  // 支持多分辨率的模型使用 image_size 参数
+  if (
+    resolution &&
+    (model === 'fal-ai/nano-banana-pro' || model === 'fal-ai/nano-banana-2')
+  ) {
     input.image_size = resolution;
   }
 
@@ -113,7 +124,11 @@ export async function editImage(params: EditImageParams): Promise<FalResult> {
   const { prompt, imageBase64, model, selection, referenceImages, systemInstruction, aspectRatio, resolution } = params;
 
   // 确定使用的编辑模型
-  const editModel = `${model}/edit` as 'fal-ai/nano-banana/edit' | 'fal-ai/nano-banana-pro/edit' | 'fal-ai/gpt-image-1.5/edit';
+  const editModel = `${model}/edit` as
+    | 'fal-ai/nano-banana/edit'
+    | 'fal-ai/nano-banana-pro/edit'
+    | 'fal-ai/gpt-image-1.5/edit'
+    | 'fal-ai/nano-banana-2/edit';
 
   // 处理选择区域，添加到 prompt
   let finalPrompt = prompt;
@@ -144,8 +159,12 @@ export async function editImage(params: EditImageParams): Promise<FalResult> {
     input.aspect_ratio = aspectRatio;
   }
 
-  // 只有 nano-banana-pro/edit 支持 image_size 参数
-  if (resolution && editModel === 'fal-ai/nano-banana-pro/edit') {
+  // 支持多分辨率的编辑模型使用 image_size 参数
+  if (
+    resolution &&
+    (editModel === 'fal-ai/nano-banana-pro/edit' ||
+      editModel === 'fal-ai/nano-banana-2/edit')
+  ) {
     input.image_size = resolution;
   }
 

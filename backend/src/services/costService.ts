@@ -14,6 +14,9 @@ export class CostService {
     // gpt-image-1.5 的成本基于分辨率，这里设置默认值（实际会通过 calculateCostWithDimensions 计算）
     this.costs.set('fal-ai/gpt-image-1.5', 0.133); // 默认 1024x1024 的成本
     this.costs.set('fal-ai/gpt-image-1.5/edit', 0.133); // 默认 1024x1024 的成本
+    // nano-banana-2 的基础成本（1K 标准分辨率）
+    this.costs.set('fal-ai/nano-banana-2', parseFloat(process.env.COST_NANO_BANANA_2 || '0.08'));
+    this.costs.set('fal-ai/nano-banana-2/edit', parseFloat(process.env.COST_NANO_BANANA_2_EDIT || '0.08'));
   }
 
   /**
@@ -21,9 +24,36 @@ export class CostService {
    * @param model 模型名称
    * @param width 图片宽度（可选，用于基于分辨率的成本计算）
    * @param height 图片高度（可选，用于基于分辨率的成本计算）
+   * @param resolution 逻辑分辨率（如 0.5K/1K/2K/4K，可选）
    */
-  calculateCost(model: string, width?: number, height?: number): number {
-    // gpt-image-1.5 模型使用基于分辨率的成本计算
+  calculateCost(
+    model: string,
+    width?: number,
+    height?: number,
+    resolution?: '0.5K' | '1K' | '2K' | '4K'
+  ): number {
+    // nano-banana-2 模型使用基于分辨率倍率的成本计算
+    if (model === 'fal-ai/nano-banana-2' || model === 'fal-ai/nano-banana-2/edit') {
+      const base =
+        this.costs.get(model) ??
+        parseFloat(process.env.COST_NANO_BANANA_2 || '0.08');
+
+      let multiplier = 1.0;
+      if (resolution === '0.5K') {
+        multiplier = 0.75;
+      } else if (resolution === '2K') {
+        multiplier = 1.5;
+      } else if (resolution === '4K') {
+        multiplier = 2.0;
+      } else {
+        // 默认 1K
+        multiplier = 1.0;
+      }
+
+      return base * multiplier;
+    }
+
+    // gpt-image-1.5 模型使用基于像素尺寸的成本计算
     if (model === 'fal-ai/gpt-image-1.5' || model === 'fal-ai/gpt-image-1.5/edit') {
       return this.calculateCostWithDimensions(width, height);
     }
@@ -70,10 +100,17 @@ export class CostService {
    * @param isEdit 是否为编辑模式
    * @param width 图片宽度（可选，用于基于分辨率的成本计算）
    * @param height 图片高度（可选，用于基于分辨率的成本计算）
+   * @param resolution 逻辑分辨率（如 0.5K/1K/2K/4K，可选）
    */
-  calculateCostByModel(baseModel: string, isEdit: boolean, width?: number, height?: number): number {
+  calculateCostByModel(
+    baseModel: string,
+    isEdit: boolean,
+    width?: number,
+    height?: number,
+    resolution?: '0.5K' | '1K' | '2K' | '4K'
+  ): number {
     const modelKey = isEdit ? `${baseModel}/edit` : baseModel;
-    return this.calculateCost(modelKey, width, height);
+    return this.calculateCost(modelKey, width, height, resolution);
   }
 }
 

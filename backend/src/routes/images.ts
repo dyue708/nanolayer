@@ -9,7 +9,11 @@ const router = express.Router();
 
 interface GenerateRequest {
   prompt: string;
-  model: 'fal-ai/nano-banana' | 'fal-ai/nano-banana-pro' | 'fal-ai/gpt-image-1.5';
+  model:
+    | 'fal-ai/nano-banana'
+    | 'fal-ai/nano-banana-pro'
+    | 'fal-ai/gpt-image-1.5'
+    | 'fal-ai/nano-banana-2';
   imageBase64?: string;
   selection?: {
     x: number;
@@ -20,7 +24,7 @@ interface GenerateRequest {
   referenceImages?: string[];
   systemInstruction?: string;
   aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
-  resolution?: '1K' | '2K' | '4K';
+  resolution?: '0.5K' | '1K' | '2K' | '4K';
   userId?: string;
 }
 
@@ -68,7 +72,11 @@ router.post('/generate', async (req, res) => {
       falResult = await editImage({
         prompt,
         imageBase64,
-        model: model as 'fal-ai/nano-banana' | 'fal-ai/nano-banana-pro' | 'fal-ai/gpt-image-1.5',
+        model: model as
+          | 'fal-ai/nano-banana'
+          | 'fal-ai/nano-banana-pro'
+          | 'fal-ai/gpt-image-1.5'
+          | 'fal-ai/nano-banana-2',
         selection,
         referenceImages,
         systemInstruction,
@@ -128,8 +136,13 @@ router.post('/generate', async (req, res) => {
       };
     }
 
-    // 计算成本（传递图片尺寸用于基于分辨率的成本计算）
-    const cost = costService.calculateCost(actualModel, dimensions.width, dimensions.height);
+    // 计算成本（传递图片尺寸和逻辑分辨率，用于基于分辨率的成本计算）
+    const cost = costService.calculateCost(
+      actualModel,
+      dimensions.width,
+      dimensions.height,
+      resolution
+    );
 
     // 保存到数据库
     const imageId = await dbService.createImageHistory({
