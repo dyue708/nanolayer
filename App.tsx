@@ -92,6 +92,17 @@ const App: React.FC = () => {
     } finally {
       setIsProcessing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+
+      // 如果是从需要图片的示例触发的上传，上传完成后自动填入对应提示词
+      if (pendingPromptRef.current) {
+          const example = pendingPromptRef.current;
+          pendingPromptRef.current = null;
+
+          setSystemInstruction('');
+          const textToUse = (language === 'zh' && example.promptZh) ? example.promptZh : example.prompt;
+          setReusedPrompt(textToUse);
+          setTimeout(() => setReusedPrompt(undefined), 100);
+      }
     }
   };
 
@@ -342,6 +353,44 @@ const App: React.FC = () => {
       setReusedPrompt(promptToReuse);
       setTimeout(() => setReusedPrompt(undefined), 100);
   }, []);
+
+  // 模板选择：同时更新系统指令和主提示词
+  const handleApplyTemplate = useCallback((templateName: string) => {
+      let systemText = '';
+      let promptText = '';
+
+      switch (templateName) {
+          case 'comic':
+              systemText = 'Generate a 4-panel comic strip based on the subject. Ensure consistent character details.';
+              promptText = systemText;
+              break;
+          case 'character':
+              systemText = 'Create a character reference sheet with front, side, and back views.';
+              promptText = systemText;
+              break;
+          case 'cyberpunk':
+              systemText = 'Apply a Cyberpunk aesthetic: Neon lights, high contrast, futuristic elements, rain.';
+              promptText = systemText;
+              break;
+          case 'watercolor':
+              systemText = 'Apply a soft watercolor painting style with bleeding edges and pastel colors.';
+              promptText = systemText;
+              break;
+          case 'consistent':
+              systemText = 'Maintain the character\'s appearance and original art style. Do not invent new characters. Ensure actions are logical and natural. The image should be bright, detailed, and have a rich background.';
+              promptText = systemText;
+              break;
+          default:
+              break;
+      }
+
+      if (systemText) {
+          setSystemInstruction(systemText);
+      }
+      if (promptText) {
+          handleReusePrompt(promptText);
+      }
+  }, [handleReusePrompt]);
 
   const handleSelectFromHistory = useCallback(async (image: ImageHistoryItem) => {
       try {
@@ -638,7 +687,7 @@ const App: React.FC = () => {
                         onSelectModel={setSelectedModel}
                         systemInstruction={systemInstruction}
                         onSystemInstructionChange={setSystemInstruction}
-                        onApplyTemplate={(t) => setSystemInstruction(t)}
+                        onApplyTemplate={handleApplyTemplate}
                         onOpenGallery={() => setShowGallery(true)}
                         aspectRatio={aspectRatio}
                         onAspectRatioChange={setAspectRatio}
