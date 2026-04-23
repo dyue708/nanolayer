@@ -14,6 +14,9 @@ export class CostService {
     // gpt-image-1.5 的成本基于分辨率，这里设置默认值（实际会通过 calculateCostWithDimensions 计算）
     this.costs.set('fal-ai/gpt-image-1.5', 0.133); // 默认 1024x1024 的成本
     this.costs.set('fal-ai/gpt-image-1.5/edit', 0.133); // 默认 1024x1024 的成本
+    // gpt-image-2 的成本基于分辨率（token 计费，高质量为默认），实际通过 calculateGptImage2Cost 计算
+    this.costs.set('fal-ai/gpt-image-2', 0.167); // 默认 1024x1024 high quality
+    this.costs.set('fal-ai/gpt-image-2/edit', 0.167); // 默认 1024x1024 high quality
     // nano-banana-2 的基础成本（1K 标准分辨率）
     this.costs.set('fal-ai/nano-banana-2', parseFloat(process.env.COST_NANO_BANANA_2 || '0.08'));
     this.costs.set('fal-ai/nano-banana-2/edit', parseFloat(process.env.COST_NANO_BANANA_2_EDIT || '0.08'));
@@ -58,6 +61,11 @@ export class CostService {
       return this.calculateCostWithDimensions(width, height);
     }
 
+    // gpt-image-2 模型使用基于像素尺寸的 token 成本计算（高质量默认）
+    if (model === 'fal-ai/gpt-image-2' || model === 'fal-ai/gpt-image-2/edit') {
+      return this.calculateGptImage2Cost(width, height);
+    }
+
     const cost = this.costs.get(model);
     if (cost === undefined) {
       console.warn(`Unknown model: ${model}, using default cost 0.0396`);
@@ -92,6 +100,30 @@ export class CostService {
     // 可以根据需要添加更多尺寸的成本计算
     console.warn(`Unknown dimensions for gpt-image-1.5: ${width}x${height}, using default cost 0.133`);
     return 0.133;
+  }
+
+  /**
+   * 根据图片尺寸计算 gpt-image-2 模型的成本（高质量默认）
+   * Token 计费，以最接近的分（cent）向上取整：
+   * - 1024x1024 high: $0.167
+   * - 1024x1536 或 1536x1024 high: $0.250
+   * - 其他尺寸：使用默认值 $0.167
+   */
+  private calculateGptImage2Cost(width?: number, height?: number): number {
+    if (!width || !height) {
+      return 0.167;
+    }
+
+    if (width === 1024 && height === 1024) {
+      return 0.167;
+    }
+
+    if ((width === 1024 && height === 1536) || (width === 1536 && height === 1024)) {
+      return 0.250;
+    }
+
+    console.warn(`Unknown dimensions for gpt-image-2: ${width}x${height}, using default cost 0.167`);
+    return 0.167;
   }
 
   /**

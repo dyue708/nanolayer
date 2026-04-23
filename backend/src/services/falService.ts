@@ -13,7 +13,8 @@ export interface GenerateImageParams {
     | 'fal-ai/nano-banana'
     | 'fal-ai/nano-banana-pro'
     | 'fal-ai/gpt-image-1.5'
-    | 'fal-ai/nano-banana-2';
+    | 'fal-ai/nano-banana-2'
+    | 'fal-ai/gpt-image-2';
   aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
   resolution?: '0.5K' | '1K' | '2K' | '4K';
   systemInstruction?: string;
@@ -26,7 +27,8 @@ export interface EditImageParams {
     | 'fal-ai/nano-banana'
     | 'fal-ai/nano-banana-pro'
     | 'fal-ai/gpt-image-1.5'
-    | 'fal-ai/nano-banana-2';
+    | 'fal-ai/nano-banana-2'
+    | 'fal-ai/gpt-image-2';
   selection?: {
     x: number;
     y: number;
@@ -128,7 +130,8 @@ export async function editImage(params: EditImageParams): Promise<FalResult> {
     | 'fal-ai/nano-banana/edit'
     | 'fal-ai/nano-banana-pro/edit'
     | 'fal-ai/gpt-image-1.5/edit'
-    | 'fal-ai/nano-banana-2/edit';
+    | 'fal-ai/nano-banana-2/edit'
+    | 'fal-ai/gpt-image-2/edit';
 
   // 处理选择区域，添加到 prompt
   let finalPrompt = prompt;

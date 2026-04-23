@@ -42,7 +42,8 @@ export type ImageGenerationModel =
   | 'fal-ai/nano-banana'
   | 'fal-ai/nano-banana-pro'
   | 'fal-ai/gpt-image-1.5'
-  | 'fal-ai/nano-banana-2';
+  | 'fal-ai/nano-banana-2'
+  | 'fal-ai/gpt-image-2';
 
 export type Language = 'en' | 'zh';
 
