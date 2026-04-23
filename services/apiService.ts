@@ -7,7 +7,8 @@ export interface GenerateImageRequest {
     | 'fal-ai/nano-banana'
     | 'fal-ai/nano-banana-pro'
     | 'fal-ai/gpt-image-1.5'
-    | 'fal-ai/nano-banana-2';
+    | 'fal-ai/nano-banana-2'
+    | 'fal-ai/gpt-image-2';
   imageBase64?: string;
   selection?: {
     x: number;
