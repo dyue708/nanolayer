@@ -45,6 +45,20 @@ export type ImageGenerationModel =
   | 'fal-ai/nano-banana-2'
   | 'fal-ai/gpt-image-2';
 
+/**
+ * AI 调用源：
+ * - 'fal'    → 通过 fal.ai 平台调用（支持所有模型）
+ * - 'vertex' → 通过 Google Vertex AI 直接调用（仅支持 nano-banana 系列）
+ */
+export type AISource = 'fal' | 'vertex';
+
+/** 支持通过 Vertex AI 调用的模型列表 */
+export const VERTEX_SUPPORTED_MODELS: ImageGenerationModel[] = [
+  'fal-ai/nano-banana',
+  'fal-ai/nano-banana-pro',
+  'fal-ai/nano-banana-2',
+];
+
 export type Language = 'en' | 'zh';
 
 export type AspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';

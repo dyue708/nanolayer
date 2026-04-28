@@ -7,7 +7,7 @@ import ConfigPanel from './components/ConfigPanel';
 import PromptBar from './components/PromptBar';
 import PromptGallery from './components/PromptGallery';
 import HistoryPanel from './components/HistoryPanel';
-import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, Language, AspectRatio, ImageResolution } from './types';
+import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, AISource, Language, AspectRatio, ImageResolution } from './types';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail } from './utils/psdHelper';
 import { generateImage, analyzeImage, ImageHistoryItem } from './services/apiService';
 import { t } from './utils/i18n';
@@ -30,6 +30,7 @@ const App: React.FC = () => {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio | undefined>(undefined);
   const [resolution, setResolution] = useState<ImageResolution>('1K');
   const [selectedModel, setSelectedModel] = useState<ImageGenerationModel>('fal-ai/nano-banana');
+  const [aiSource, setAiSource] = useState<AISource>('fal');
   
   const [referenceLayerIds, setReferenceLayerIds] = useState<string[]>([]);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
@@ -265,6 +266,7 @@ const App: React.FC = () => {
       result = await generateImage({
           prompt: promptText,
           model: selectedModel,
+          aiSource,
           imageBase64: activeLayer ? canvasToBase64(activeLayer.canvas) : undefined,
           selection: selectionPercent,
           referenceImages: referenceBase64s.length > 0 ? referenceBase64s : undefined,
@@ -685,6 +687,8 @@ const App: React.FC = () => {
                         onReusePrompt={handleReusePrompt}
                         selectedModel={selectedModel}
                         onSelectModel={setSelectedModel}
+                        aiSource={aiSource}
+                        onAiSourceChange={setAiSource}
                         systemInstruction={systemInstruction}
                         onSystemInstructionChange={setSystemInstruction}
                         onApplyTemplate={handleApplyTemplate}

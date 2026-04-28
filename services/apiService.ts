@@ -9,6 +9,8 @@ export interface GenerateImageRequest {
     | 'fal-ai/gpt-image-1.5'
     | 'fal-ai/nano-banana-2'
     | 'fal-ai/gpt-image-2';
+  /** AI 调用源：'fal'（默认）或 'vertex'（Vertex AI，仅 nano-banana 系列） */
+  aiSource?: 'fal' | 'vertex';
   imageBase64?: string;
   selection?: {
     x: number;

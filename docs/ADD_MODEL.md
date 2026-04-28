@@ -1,10 +1,26 @@
 # 新增模型操作文档
 
-> 每次新增模型，按顺序改以下 6 个文件即可，缺一不可。
+> 每次新增模型，按顺序改以下文件即可，缺一不可。
 
 ---
 
-## 需要修改的文件清单
+## 背景：双 AI 源架构
+
+本项目支持两个 AI 调用源，前端可在配置面板自由切换：
+
+| 源 | 标识 | 适用模型 | 说明 |
+|----|------|----------|------|
+| **fal.ai** | `fal` | 所有模型 | 默认源，通过 `@fal-ai/client` 代理调用 |
+| **Google Vertex AI** | `vertex` | nano-banana 系列 | 直连 Google Vertex AI，走官方计费 |
+
+- GPT Image 系列（gpt-image-1.5、gpt-image-2）仅支持 **fal.ai** 源。
+- nano-banana 系列支持 **两种源**，在 ConfigPanel 顶部的「AI 调用源」按钮切换。
+
+---
+
+## 新增模型需要修改的文件清单
+
+### 情况 A：新增 fal.ai 模型（仅 fal 源）
 
 | 文件 | 改动内容 |
 |------|---------|
@@ -14,6 +30,18 @@
 | `backend/src/routes/images.ts` | `GenerateRequest.model` 联合类型 + `editImage` 类型断言加新模型 ID |
 | `backend/src/services/costService.ts` | 注册成本默认值 + `calculateCost` 分支逻辑 |
 | `components/ConfigPanel.tsx` | UI 添加模型选择按钮 |
+
+### 情况 B：新增同时支持 fal + Vertex 的模型
+
+在情况 A 的基础上，还需额外修改：
+
+| 文件 | 改动内容 |
+|------|---------|
+| `backend/src/services/vertexService.ts` | 在 `FAL_TO_VERTEX_MODEL` 映射表中加入新模型 |
+| `backend/src/services/costService.ts` | 同时注册 `vertex/<model-name>` 和 `vertex/<model-name>/edit` 的成本 |
+| `backend/src/routes/images.ts` | 若不是 nano-banana 系列，需更新 `isVertexSupportedModel` 检查（实际由 `vertexService.ts` 的映射表控制） |
+| `types.ts` | 在 `VERTEX_SUPPORTED_MODELS` 数组中加入新模型 ID |
+| `components/ConfigPanel.tsx` | 新模型按钮无需额外处理，Vertex 可用性由 `VERTEX_SUPPORTED_MODELS` 自动控制 |
 
 ---
 
@@ -29,6 +57,14 @@ export type ImageGenerationModel =
   | 'fal-ai/nano-banana-2'
   | 'fal-ai/gpt-image-2'
   | 'fal-ai/YOUR-NEW-MODEL';   // ← 新增
+
+// 如果同时支持 Vertex，也加入此数组：
+export const VERTEX_SUPPORTED_MODELS: ImageGenerationModel[] = [
+  'fal-ai/nano-banana',
+  'fal-ai/nano-banana-pro',
+  'fal-ai/nano-banana-2',
+  'fal-ai/YOUR-NEW-MODEL',   // ← 若支持 Vertex 则加
+];
 ```
 
 ---
@@ -87,7 +123,6 @@ const editModel = `${model}/edit` as
 **④ 如果新模型支持 `image_size` 分辨率参数，在 `generateImage` 和 `editImage` 中各加一个条件**
 
 ```ts
-// generateImage 函数内
 if (
   resolution &&
   (model === 'fal-ai/nano-banana-pro' ||
@@ -125,7 +160,32 @@ model: model as
 
 ---
 
-### Step 5 · `backend/src/services/costService.ts`
+### Step 5 · `backend/src/services/vertexService.ts`（仅限支持 Vertex 的模型）
+
+在 `FAL_TO_VERTEX_MODEL` 映射表中添加：
+
+```ts
+const FAL_TO_VERTEX_MODEL: Record<string, string> = {
+  'fal-ai/nano-banana':     process.env.VERTEX_MODEL_NANO_BANANA     || 'gemini-2.0-flash-preview-image-generation',
+  'fal-ai/nano-banana-pro': process.env.VERTEX_MODEL_NANO_BANANA_PRO || 'gemini-2.0-flash-preview-image-generation',
+  'fal-ai/nano-banana-2':   process.env.VERTEX_MODEL_NANO_BANANA_2   || 'gemini-2.0-flash-preview-image-generation',
+  'fal-ai/YOUR-NEW-MODEL':  process.env.VERTEX_MODEL_YOUR_NEW_MODEL  || 'your-vertex-model-id',  // ← 新增
+};
+```
+
+同时更新 `VertexSupportedFalModel` 联合类型：
+
+```ts
+export type VertexSupportedFalModel =
+  | 'fal-ai/nano-banana'
+  | 'fal-ai/nano-banana-pro'
+  | 'fal-ai/nano-banana-2'
+  | 'fal-ai/YOUR-NEW-MODEL';   // ← 新增
+```
+
+---
+
+### Step 6 · `backend/src/services/costService.ts`
 
 **情况 A：固定单价模型**（如 nano-banana 系列）
 
@@ -134,6 +194,13 @@ model: model as
 ```ts
 this.costs.set('fal-ai/YOUR-NEW-MODEL', parseFloat(process.env.COST_YOUR_NEW_MODEL || '0.05'));
 this.costs.set('fal-ai/YOUR-NEW-MODEL/edit', parseFloat(process.env.COST_YOUR_NEW_MODEL_EDIT || '0.05'));
+```
+
+若同时支持 Vertex，额外注册 vertex 键：
+
+```ts
+this.costs.set('vertex/YOUR-NEW-MODEL', parseFloat(process.env.COST_VERTEX_YOUR_NEW_MODEL || '0.03'));
+this.costs.set('vertex/YOUR-NEW-MODEL/edit', parseFloat(process.env.COST_VERTEX_YOUR_NEW_MODEL_EDIT || '0.03'));
 ```
 
 完成，`calculateCost` 里的兜底逻辑会自动命中，无需额外分支。
@@ -196,11 +263,14 @@ if (model === 'fal-ai/YOUR-NEW-MODEL' || model === 'fal-ai/YOUR-NEW-MODEL/edit')
 ```env
 COST_YOUR_NEW_MODEL=0.05
 COST_YOUR_NEW_MODEL_EDIT=0.05
+# 若支持 Vertex：
+COST_VERTEX_YOUR_NEW_MODEL=0.03
+COST_VERTEX_YOUR_NEW_MODEL_EDIT=0.03
 ```
 
 ---
 
-### Step 6 · `components/ConfigPanel.tsx`
+### Step 7 · `components/ConfigPanel.tsx`
 
 在模型列表末尾（`</div>` 闭合之前）添加按钮，复制任意一个按钮模板并修改：
 
@@ -227,6 +297,16 @@ COST_YOUR_NEW_MODEL_EDIT=0.05
 </button>
 ```
 
+**如果该模型不支持 Vertex**，需加 `disabled` 和 opacity 处理（参考 GPT Image 的写法）：
+
+```tsx
+<button 
+    onClick={() => { if (aiSource !== 'vertex') onSelectModel('fal-ai/YOUR-NEW-MODEL'); }}
+    disabled={aiSource === 'vertex'}
+    className={`... ${aiSource === 'vertex' ? 'opacity-30 cursor-not-allowed bg-slate-800 border-slate-700' : ...}`}
+>
+```
+
 颜色参考（避免重复使用）：
 
 | 颜色 | 已使用模型 |
@@ -242,7 +322,7 @@ COST_YOUR_NEW_MODEL_EDIT=0.05
 
 ## 完整 Checklist
 
-添加新模型时，逐一打勾确认：
+### fal.ai 模型
 
 - [ ] `types.ts` — `ImageGenerationModel` 加新 ID
 - [ ] `services/apiService.ts` — `GenerateImageRequest.model` 加新 ID
@@ -251,7 +331,28 @@ COST_YOUR_NEW_MODEL_EDIT=0.05
 - [ ] `backend/src/services/costService.ts` — 成本注册 + 计算逻辑
 - [ ] `components/ConfigPanel.tsx` — UI 按钮
 - [ ] `backend/.env` — 按需添加 `COST_*` 环境变量
-- [ ] 本地 `npm run build` 或 `tsc` 验证无编译错误后再部署
+
+### 额外：同时支持 Vertex AI
+
+- [ ] `types.ts` — 新模型 ID 加入 `VERTEX_SUPPORTED_MODELS` 数组
+- [ ] `backend/src/services/vertexService.ts` — `FAL_TO_VERTEX_MODEL` 映射 + `VertexSupportedFalModel` 类型（2 处）
+- [ ] `backend/src/services/costService.ts` — 注册 `vertex/<name>` 和 `vertex/<name>/edit` 成本
+- [ ] `backend/.env` — 按需添加 `COST_VERTEX_*` 和 `VERTEX_MODEL_*` 环境变量
+
+---
+
+## Vertex AI 环境配置
+
+使用 Vertex 源前，需在 `backend/.env` 中配置：
+
+```env
+VERTEX_AI_PROJECT=your-gcp-project-id
+VERTEX_AI_LOCATION=us-east5
+# 本地开发用服务账号：
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+```
+
+服务账号需要 `Vertex AI User` IAM 角色。
 
 ---
 
@@ -260,3 +361,13 @@ COST_YOUR_NEW_MODEL_EDIT=0.05
 **`TS2322: Type 'ImageGenerationModel' is not assignable to type '...'`**
 
 原因：`services/apiService.ts` 里的 `GenerateImageRequest.model` 没有同步更新，与 `types.ts` 中的 `ImageGenerationModel` 不一致。按 Step 2 补全即可。
+
+**`模型 X 不支持 Vertex AI 调用`**
+
+原因：前端传入了 `aiSource: 'vertex'` 但模型不在 `FAL_TO_VERTEX_MODEL` 映射表中。
+- 若要支持该模型的 Vertex 调用，按「额外：同时支持 Vertex AI」Checklist 操作。
+- 若该模型不支持 Vertex，前端 `ConfigPanel.tsx` 应将其按钮设为 `disabled={aiSource === 'vertex'}`。
+
+**`VERTEX_AI_PROJECT（或 GCP_PROJECT）环境变量是必填项`**
+
+原因：未在 `backend/.env` 中配置 GCP 项目 ID。参考上方「Vertex AI 环境配置」补全即可。

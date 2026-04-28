@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ImageGenerationModel, Language, AspectRatio, ImageResolution, Layer } from '../types';
+import { ImageGenerationModel, AISource, VERTEX_SUPPORTED_MODELS, Language, AspectRatio, ImageResolution, Layer } from '../types';
 import { t } from '../utils/i18n';
 
 interface ConfigPanelProps {
@@ -15,6 +15,10 @@ interface ConfigPanelProps {
   // Model State
   selectedModel: ImageGenerationModel;
   onSelectModel: (model: ImageGenerationModel) => void;
+
+  // AI Source State
+  aiSource: AISource;
+  onAiSourceChange: (source: AISource) => void;
 
   // System Prompt State
   systemInstruction: string;
@@ -39,6 +43,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
   onReusePrompt,
   selectedModel,
   onSelectModel,
+  aiSource,
+  onAiSourceChange,
   systemInstruction,
   onSystemInstructionChange,
   onApplyTemplate,
@@ -114,6 +120,51 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
 
         <hr className="border-slate-800" />
         
+        {/* AI Source Toggle */}
+        <section>
+            <label className="block text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center gap-1">
+                <i className="fa-solid fa-server"></i> AI 调用源
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+                <button
+                    onClick={() => onAiSourceChange('fal')}
+                    className={`flex items-center justify-center gap-2 p-2 rounded-lg border text-xs font-semibold transition-all ${
+                        aiSource === 'fal'
+                        ? 'bg-orange-900/30 border-orange-500/60 text-orange-200 ring-1 ring-orange-500/20'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
+                >
+                    <i className={`fa-solid fa-cloud ${aiSource === 'fal' ? 'text-orange-400' : 'text-slate-500'}`}></i>
+                    fal.ai
+                </button>
+                <button
+                    onClick={() => {
+                        onAiSourceChange('vertex');
+                        // 若当前模型不支持 Vertex，自动切换到 nano-banana
+                        if (!VERTEX_SUPPORTED_MODELS.includes(selectedModel)) {
+                            onSelectModel('fal-ai/nano-banana');
+                        }
+                    }}
+                    className={`flex items-center justify-center gap-2 p-2 rounded-lg border text-xs font-semibold transition-all ${
+                        aiSource === 'vertex'
+                        ? 'bg-sky-900/30 border-sky-500/60 text-sky-200 ring-1 ring-sky-500/20'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
+                >
+                    <i className={`fa-brands fa-google ${aiSource === 'vertex' ? 'text-sky-400' : 'text-slate-500'}`}></i>
+                    Vertex AI
+                </button>
+            </div>
+            {aiSource === 'vertex' && (
+                <p className="mt-1.5 text-[10px] text-sky-500/80 flex items-center gap-1">
+                    <i className="fa-solid fa-circle-info"></i>
+                    Vertex 仅支持 Nano Banana 系列，GPT Image 不可用
+                </p>
+            )}
+        </section>
+
+        <hr className="border-slate-800" />
+
         {/* Model Selector */}
         <section>
             <label className="block text-[10px] text-slate-500 uppercase font-bold mb-2">{t(lang, 'modelSelectTitle')}</label>
@@ -153,19 +204,24 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                 </button>
 
                 <button 
-                    onClick={() => onSelectModel('fal-ai/gpt-image-1.5')}
+                    onClick={() => { if (aiSource !== 'vertex') onSelectModel('fal-ai/gpt-image-1.5'); }}
+                    disabled={aiSource === 'vertex'}
                     className={`w-full flex items-center p-2.5 rounded-lg border transition-all text-left group ${
-                        selectedModel === 'fal-ai/gpt-image-1.5' 
-                        ? 'bg-green-900/20 border-green-500/50 ring-1 ring-green-500/20' 
-                        : 'bg-slate-800 border-slate-700 hover:border-slate-600'
+                        aiSource === 'vertex'
+                        ? 'opacity-30 cursor-not-allowed bg-slate-800 border-slate-700'
+                        : selectedModel === 'fal-ai/gpt-image-1.5' 
+                            ? 'bg-green-900/20 border-green-500/50 ring-1 ring-green-500/20' 
+                            : 'bg-slate-800 border-slate-700 hover:border-slate-600'
                     }`}
                 >
-                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/gpt-image-1.5' ? 'bg-green-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/gpt-image-1.5' && aiSource !== 'vertex' ? 'bg-green-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
                         <i className="fa-solid fa-sparkles"></i>
                     </div>
                     <div>
-                        <div className={`text-xs font-bold ${selectedModel === 'fal-ai/gpt-image-1.5' ? 'text-green-200' : 'text-slate-300'}`}>GPT Image 1.5</div>
-                        <div className="text-[10px] text-slate-500 group-hover:text-slate-400">High Quality Generation</div>
+                        <div className={`text-xs font-bold ${selectedModel === 'fal-ai/gpt-image-1.5' && aiSource !== 'vertex' ? 'text-green-200' : 'text-slate-300'}`}>GPT Image 1.5</div>
+                        <div className="text-[10px] text-slate-500 group-hover:text-slate-400">
+                            {aiSource === 'vertex' ? 'fal.ai 源可用' : 'High Quality Generation'}
+                        </div>
                     </div>
                 </button>
 
@@ -187,19 +243,24 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                 </button>
 
                 <button 
-                    onClick={() => onSelectModel('fal-ai/gpt-image-2')}
+                    onClick={() => { if (aiSource !== 'vertex') onSelectModel('fal-ai/gpt-image-2'); }}
+                    disabled={aiSource === 'vertex'}
                     className={`w-full flex items-center p-2.5 rounded-lg border transition-all text-left group ${
-                        selectedModel === 'fal-ai/gpt-image-2' 
-                        ? 'bg-teal-900/20 border-teal-500/50 ring-1 ring-teal-500/20' 
-                        : 'bg-slate-800 border-slate-700 hover:border-slate-600'
+                        aiSource === 'vertex'
+                        ? 'opacity-30 cursor-not-allowed bg-slate-800 border-slate-700'
+                        : selectedModel === 'fal-ai/gpt-image-2' 
+                            ? 'bg-teal-900/20 border-teal-500/50 ring-1 ring-teal-500/20' 
+                            : 'bg-slate-800 border-slate-700 hover:border-slate-600'
                     }`}
                 >
-                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/gpt-image-2' ? 'bg-teal-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/gpt-image-2' && aiSource !== 'vertex' ? 'bg-teal-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
                         <i className="fa-solid fa-wand-magic-sparkles"></i>
                     </div>
                     <div>
-                        <div className={`text-xs font-bold ${selectedModel === 'fal-ai/gpt-image-2' ? 'text-teal-200' : 'text-slate-300'}`}>GPT Image 2</div>
-                        <div className="text-[10px] text-slate-500 group-hover:text-slate-400">Premium Quality · Token Pricing</div>
+                        <div className={`text-xs font-bold ${selectedModel === 'fal-ai/gpt-image-2' && aiSource !== 'vertex' ? 'text-teal-200' : 'text-slate-300'}`}>GPT Image 2</div>
+                        <div className="text-[10px] text-slate-500 group-hover:text-slate-400">
+                            {aiSource === 'vertex' ? 'fal.ai 源可用' : 'Premium Quality · Token Pricing'}
+                        </div>
                     </div>
                 </button>
             </div>
