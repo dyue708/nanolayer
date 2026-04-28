@@ -19,6 +19,7 @@ services:
     volumes:
       - ./backend/data:/app/data
       - ./backend/logs:/app/logs
+      - ./backend/key:/app/key:ro
     restart: unless-stopped
     networks:
       - nanolayer-network
