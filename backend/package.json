@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@fal-ai/client": "latest",
+    "@google/genai": "^1.50.1",
     "ali-oss": "^6.20.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -32,4 +33,3 @@
     "typescript": "^5.5.3"
   }
 }
-

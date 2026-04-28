@@ -7,6 +7,7 @@ export class CostService {
   }
 
   private loadCosts() {
+    // ── fal.ai 源 ──────────────────────────────────────────────────────────
     this.costs.set('fal-ai/nano-banana', parseFloat(process.env.COST_NANO_BANANA || '0.0396'));
     this.costs.set('fal-ai/nano-banana-pro', parseFloat(process.env.COST_NANO_BANANA_PRO || '0.134'));
     this.costs.set('fal-ai/nano-banana/edit', parseFloat(process.env.COST_NANO_BANANA_EDIT || '0.0396'));
@@ -20,6 +21,16 @@ export class CostService {
     // nano-banana-2 的基础成本（1K 标准分辨率）
     this.costs.set('fal-ai/nano-banana-2', parseFloat(process.env.COST_NANO_BANANA_2 || '0.08'));
     this.costs.set('fal-ai/nano-banana-2/edit', parseFloat(process.env.COST_NANO_BANANA_2_EDIT || '0.08'));
+
+    // ── Vertex AI 源（nano-banana 系列通过 Vertex 调用时的成本）─────────────
+    // Vertex 调用走 Google 官方计费，成本与 fal 代理价格不同
+    // 可通过 COST_VERTEX_* 环境变量覆盖；默认值参考 Gemini Image Generation 官方定价
+    this.costs.set('vertex/nano-banana', parseFloat(process.env.COST_VERTEX_NANO_BANANA || '0.03'));
+    this.costs.set('vertex/nano-banana/edit', parseFloat(process.env.COST_VERTEX_NANO_BANANA_EDIT || '0.03'));
+    this.costs.set('vertex/nano-banana-pro', parseFloat(process.env.COST_VERTEX_NANO_BANANA_PRO || '0.05'));
+    this.costs.set('vertex/nano-banana-pro/edit', parseFloat(process.env.COST_VERTEX_NANO_BANANA_PRO_EDIT || '0.05'));
+    this.costs.set('vertex/nano-banana-2', parseFloat(process.env.COST_VERTEX_NANO_BANANA_2 || '0.04'));
+    this.costs.set('vertex/nano-banana-2/edit', parseFloat(process.env.COST_VERTEX_NANO_BANANA_2_EDIT || '0.04'));
   }
 
   /**

@@ -1,5 +1,11 @@
 import express from 'express';
 import { generateImage, editImage } from '../services/falService.js';
+import {
+  generateImageVertex,
+  editImageVertex,
+  isVertexSupportedModel,
+  type VertexSupportedFalModel,
+} from '../services/vertexService.js';
 import { uploadImage } from '../services/ossService.js';
 import { dbService } from '../services/dbService.js';
 import { costService } from '../services/costService.js';
@@ -15,6 +21,8 @@ interface GenerateRequest {
     | 'fal-ai/gpt-image-1.5'
     | 'fal-ai/nano-banana-2'
     | 'fal-ai/gpt-image-2';
+  /** AI 调用源：'fal'（默认）或 'vertex'（Vertex AI，仅 nano-banana 系列） */
+  aiSource?: 'fal' | 'vertex';
   imageBase64?: string;
   selection?: {
     x: number;
@@ -58,42 +66,78 @@ async function getImageDimensions(imageData: string): Promise<{ width: number; h
 router.post('/generate', async (req, res) => {
   try {
     const body: GenerateRequest = req.body;
-    const { prompt, model, imageBase64, selection, referenceImages, systemInstruction, aspectRatio, resolution, userId } = body;
+    const { prompt, model, aiSource, imageBase64, selection, referenceImages, systemInstruction, aspectRatio, resolution, userId } = body;
 
     if (!prompt || !model) {
       return res.status(400).json({ error: 'prompt and model are required' });
     }
 
-    let falResult;
-    let actualModel = model;
+    // 当请求使用 vertex 源但模型不支持时，返回错误
+    const useVertex = aiSource === 'vertex';
+    if (useVertex && !isVertexSupportedModel(model)) {
+      return res.status(400).json({
+        error: `模型 ${model} 不支持 Vertex AI 调用。支持 Vertex 的模型：fal-ai/nano-banana、fal-ai/nano-banana-pro、fal-ai/nano-banana-2`
+      });
+    }
+
+    let falResult: { imageUrl?: string; imageBase64?: string; requestId: string };
+
+    // 构造用于成本计算和数据库记录的模型键
+    // Vertex 源使用 vertex/<short-name> 前缀，便于区分来源和成本
+    const shortName = model.replace('fal-ai/', ''); // e.g. "nano-banana"
+    let actualModel = useVertex ? `vertex/${shortName}` : model;
 
     if (imageBase64) {
       // 编辑模式
-      actualModel = `${model}/edit` as any;
-      falResult = await editImage({
-        prompt,
-        imageBase64,
-        model: model as
-          | 'fal-ai/nano-banana'
-          | 'fal-ai/nano-banana-pro'
-          | 'fal-ai/gpt-image-1.5'
-          | 'fal-ai/nano-banana-2'
-          | 'fal-ai/gpt-image-2',
-        selection,
-        referenceImages,
-        systemInstruction,
-        aspectRatio,
-        resolution
-      });
+      actualModel = useVertex ? `vertex/${shortName}/edit` : `${model}/edit` as any;
+
+      if (useVertex) {
+        falResult = await editImageVertex({
+          prompt,
+          imageBase64,
+          model: model as VertexSupportedFalModel,
+          selection,
+          referenceImages,
+          systemInstruction,
+          aspectRatio,
+          resolution,
+        });
+      } else {
+        falResult = await editImage({
+          prompt,
+          imageBase64,
+          model: model as
+            | 'fal-ai/nano-banana'
+            | 'fal-ai/nano-banana-pro'
+            | 'fal-ai/gpt-image-1.5'
+            | 'fal-ai/nano-banana-2'
+            | 'fal-ai/gpt-image-2',
+          selection,
+          referenceImages,
+          systemInstruction,
+          aspectRatio,
+          resolution,
+        });
+      }
     } else {
       // 生成模式
-      falResult = await generateImage({
-        prompt,
-        model,
-        aspectRatio,
-        resolution,
-        systemInstruction
-      });
+      if (useVertex) {
+        falResult = await generateImageVertex({
+          prompt,
+          model: model as VertexSupportedFalModel,
+          aspectRatio,
+          resolution,
+          systemInstruction,
+        });
+      } else {
+        falResult = await generateImage({
+          prompt,
+          model,
+          aspectRatio,
+          resolution,
+          systemInstruction,
+        });
+      }
     }
 
     if (!falResult.imageUrl && !falResult.imageBase64) {
