@@ -316,8 +316,15 @@ const App: React.FC = () => {
           if (ctx) ctx.drawImage(img, 0, 0, activeLayer.canvas.width, activeLayer.canvas.height);
       }
 
-      const placeX = activeLayer ? activeLayer.x : (canvasDims.width - resultCanvas.width) / 2;
-      const placeY = activeLayer ? activeLayer.y : (canvasDims.height - resultCanvas.height) / 2;
+      // 在纯生成（无活动图层）或结果图更大时，确保主画布尺寸可容纳结果图层
+      const nextCanvasWidth = activeLayer ? canvasDims.width : Math.max(canvasDims.width, resultCanvas.width);
+      const nextCanvasHeight = activeLayer ? canvasDims.height : Math.max(canvasDims.height, resultCanvas.height);
+      if (nextCanvasWidth !== canvasDims.width || nextCanvasHeight !== canvasDims.height) {
+          setCanvasDims({ width: nextCanvasWidth, height: nextCanvasHeight });
+      }
+
+      const placeX = activeLayer ? activeLayer.x : (nextCanvasWidth - resultCanvas.width) / 2;
+      const placeY = activeLayer ? activeLayer.y : (nextCanvasHeight - resultCanvas.height) / 2;
 
       const newLayer: Layer = {
           id: `layer-${Date.now()}`,

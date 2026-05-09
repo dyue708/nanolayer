@@ -190,17 +190,26 @@ export async function editImageVertex(params: VertexEditParams): Promise<VertexR
     contents.push({ role: 'model', parts: [{ text: 'Understood.' }] });
   }
 
-  // 构造用户消息：文本 + 原图 + 参考图（inline data）
-  const userParts: any[] = [{ text: finalPrompt }];
+  // 构造用户消息：明确区分“待编辑主图”和“参考图”，提升 Gemini 对参考图的利用稳定性
+  const userParts: any[] = [];
+
+  const referenceHint =
+    referenceImages && referenceImages.length > 0
+      ? `\nUse the additional reference image(s) to guide style/identity/details, but apply edits only to the primary image.`
+      : '';
+  userParts.push({ text: `${finalPrompt}${referenceHint}` });
+
+  userParts.push({ text: 'Primary image to edit:' });
 
   const { mimeType: mainMime, data: mainData } = stripDataUri(imageBase64);
   userParts.push({ inlineData: { mimeType: mainMime, data: mainData } });
 
   if (referenceImages?.length) {
-    for (const ref of referenceImages) {
+    referenceImages.forEach((ref, index) => {
+      userParts.push({ text: `Reference image ${index + 1} (for guidance only):` });
       const { mimeType: refMime, data: refData } = stripDataUri(ref);
       userParts.push({ inlineData: { mimeType: refMime, data: refData } });
-    }
+    });
   }
 
   contents.push({ role: 'user', parts: userParts });
