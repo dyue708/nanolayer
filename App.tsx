@@ -21,6 +21,8 @@ import { PromptExample } from './utils/promptExamples';
 
 type MobilePanel = 'none' | 'layers' | 'config' | 'tools';
 
+const USAGE_GUIDE_URL = 'https://xingye.feishu.cn/wiki/J9ykw7jwGirdZckYhjicIC3jnCd';
+
 const App: React.FC = () => {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
@@ -625,6 +627,16 @@ const App: React.FC = () => {
              <button onClick={() => setShowHistory(true)} className="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-2">
                 <i className="fa-solid fa-clock-rotate-left text-blue-400"></i> <span className="hidden sm:inline uppercase">{t(language, 'history') || 'History'}</span>
              </button>
+             <a
+                href={USAGE_GUIDE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-2 text-slate-200 no-underline"
+                title={t(language, 'usageGuide')}
+             >
+                <i className="fa-solid fa-book text-amber-400"></i>
+                <span className="hidden sm:inline">{t(language, 'usageGuide')}</span>
+             </a>
              <button onClick={() => setShowSettings(true)} className="p-2 transition-all rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
                 <i className="fa-solid fa-gear"></i>
              </button>

@@ -82,6 +82,7 @@ export const translations = {
     uploadImageFirst: "Please upload an image first to use this style.",
     allCategories: "All Categories",
     history: "History",
+    usageGuide: "User guide",
     noHistory: "No history yet",
 
     feishuGateTitle: "Organization sign-in required",
@@ -175,6 +176,7 @@ export const translations = {
     uploadImageFirst: "请先上传一张图片，然后才能使用此风格。",
     allCategories: "全部",
     history: "历史记录",
+    usageGuide: "使用说明",
     noHistory: "暂无历史记录",
 
     feishuGateTitle: "需要组织账号登录",
