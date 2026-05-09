@@ -632,6 +632,51 @@ pm2 logs
 - PM2: `backend/logs/`
 - systemd: `journalctl -u nanolayer-backend`
 
+### Docker 日志（Compose）
+
+本项目在 `docker-compose.yml` 中已启用容器日志轮转（`json-file` 驱动）：
+
+- backend: `max-size=20m`，`max-file=10`（最多约 200MB）
+- frontend: `max-size=10m`，`max-file=5`（最多约 50MB）
+
+#### 1) 查看容器实时日志（推荐）
+
+```bash
+# 查看全部服务日志
+docker compose logs -f
+
+# 只看后端
+docker compose logs -f backend
+
+# 只看前端
+docker compose logs -f frontend
+
+# 仅查看最近 200 行并持续跟随
+docker compose logs --tail=200 -f backend
+```
+
+#### 2) 日志保存位置
+
+- **容器标准输出日志（Docker 管理）**  
+  由 Docker `json-file` 驱动保存在宿主机 Docker 数据目录中（Linux 默认在 `/var/lib/docker/containers/...`）。  
+  建议优先通过 `docker compose logs` 或 `docker logs` 查看，不建议直接手动编辑该目录文件。
+
+- **应用文件日志（后端目录挂载）**  
+  Compose 已挂载 `./backend/logs:/app/logs`，后端会自动写入：
+  - `backend/logs/app.log`
+  - `backend/logs/error.log`
+  以上文件在宿主机持久化保存，容器重建后仍可查看。
+
+#### 3) 查看文件日志（宿主机）
+
+```bash
+# 查看应用日志
+tail -f backend/logs/app.log
+
+# 仅看错误日志
+tail -f backend/logs/error.log
+```
+
 ## 性能优化
 
 ### 1. 启用 Nginx 缓存

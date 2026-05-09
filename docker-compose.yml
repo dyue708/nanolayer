@@ -21,6 +21,11 @@ services:
       - ./backend/logs:/app/logs
       - ./backend/key:/app/key:ro
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "10"
     networks:
       - nanolayer-network
     healthcheck:
@@ -40,6 +45,11 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - nanolayer-network
     environment:

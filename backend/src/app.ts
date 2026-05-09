@@ -1,11 +1,70 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import imagesRouter from './routes/images.js';
 import analysisRouter from './routes/analysis.js';
 import authRouter from './routes/auth.js';
 
 dotenv.config();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const LOG_DIR = process.env.LOG_DIR || path.resolve(__dirname, '../logs');
+const APP_LOG_FILE = path.join(LOG_DIR, 'app.log');
+const ERROR_LOG_FILE = path.join(LOG_DIR, 'error.log');
+
+function initFileLogging() {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+
+  const appStream = fs.createWriteStream(APP_LOG_FILE, { flags: 'a' });
+  const errorStream = fs.createWriteStream(ERROR_LOG_FILE, { flags: 'a' });
+
+  const rawLog = console.log.bind(console);
+  const rawWarn = console.warn.bind(console);
+  const rawError = console.error.bind(console);
+
+  const formatArgs = (args: any[]) =>
+    args
+      .map((arg) => {
+        if (arg instanceof Error) return arg.stack || arg.message;
+        if (typeof arg === 'string') return arg;
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      })
+      .join(' ');
+
+  const writeLine = (level: 'INFO' | 'WARN' | 'ERROR', message: string) => {
+    const line = `[${new Date().toISOString()}] [${level}] ${message}\n`;
+    appStream.write(line);
+    if (level === 'ERROR') {
+      errorStream.write(line);
+    }
+  };
+
+  console.log = (...args: any[]) => {
+    rawLog(...args);
+    writeLine('INFO', formatArgs(args));
+  };
+
+  console.warn = (...args: any[]) => {
+    rawWarn(...args);
+    writeLine('WARN', formatArgs(args));
+  };
+
+  console.error = (...args: any[]) => {
+    rawError(...args);
+    writeLine('ERROR', formatArgs(args));
+  };
+
+  rawLog(`[Logger] File logging enabled: ${APP_LOG_FILE}`);
+}
+
+initFileLogging();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
