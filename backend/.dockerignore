@@ -16,4 +16,4 @@ logs
 .DS_Store
 *.db
 *.db-journal
-
+key
