@@ -206,7 +206,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                     }`}
                 >
                     <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/gpt-image-1.5' && aiSource !== 'vertex' ? 'bg-green-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
-                        <i className="fa-solid fa-sparkles"></i>
+                        <i className="fa-solid fa-wand-magic-sparkles"></i>
                     </div>
                     <div>
                         <div className={`text-xs font-bold ${selectedModel === 'fal-ai/gpt-image-1.5' && aiSource !== 'vertex' ? 'text-green-200' : 'text-slate-300'}`}>GPT Image 1.5</div>
