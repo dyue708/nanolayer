@@ -69,6 +69,9 @@ initFileLogging();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// 避免 JSON API 默认 ETag 触发浏览器 304，导致 fetch 拿到空体或过期的 auth 策略
+app.set('etag', false);
+
 // 中间件
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',

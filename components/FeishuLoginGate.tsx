@@ -79,7 +79,13 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
       }
 
       setAuthRequired(true);
-      setAppId(status.appId ?? '');
+      const aid = (status.appId ?? '').trim();
+      setAppId(aid);
+      if (!aid) {
+        setError(t(lang, 'feishuMissingAppId'));
+        setPhase('login');
+        return;
+      }
 
       const params = new URLSearchParams(window.location.search);
       const oauthError = params.get('error');

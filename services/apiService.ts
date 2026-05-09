@@ -77,9 +77,20 @@ export async function getFeishuAuthStatus(): Promise<{
   authRequired: boolean;
   appId?: string;
 }> {
-  const res = await fetch(`${API_BASE_URL}/auth/feishu/status`);
+  const res = await fetch(`${API_BASE_URL}/auth/feishu/status`, {
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  });
   if (!res.ok) {
-    throw new Error(`无法获取登录策略: HTTP ${res.status}`);
+    const hint =
+      res.status === 304
+        ? '接口返回 304（缓存），请强制刷新（Ctrl+Shift+R）或清空缓存'
+        : `HTTP ${res.status}`;
+    throw new Error(`无法获取登录策略: ${hint}`);
   }
   return res.json();
 }
@@ -92,7 +103,8 @@ export async function exchangeFeishuOAuthCode(code: string): Promise<{
 }> {
   const res = await fetch(`${API_BASE_URL}/auth/feishu/exchange`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
     body: JSON.stringify({ code }),
   });
   const body = await res.json().catch(() => ({}));

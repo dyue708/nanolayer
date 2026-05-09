@@ -8,6 +8,13 @@ import {
 
 const router = express.Router();
 
+router.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 /**
  * GET /api/auth/feishu/status
  * 前端用于判断是否必须登录；仅在启用租户校验时返回 appId（用于拼接授权链接）。
