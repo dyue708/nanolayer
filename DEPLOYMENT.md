@@ -291,19 +291,19 @@ cp backend/.env.example backend/.env
 2. 构建并启动：
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 3. 查看日志：
 
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 4. 停止服务：
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 **单独构建：**
@@ -779,10 +779,10 @@ sudo systemctl restart nanolayer-backend
 git pull
 
 # 重新构建并启动
-docker-compose up -d --build
+docker compose up -d --build
 
 # 查看更新日志
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ## 联系和支持
