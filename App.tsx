@@ -9,7 +9,13 @@ import PromptGallery from './components/PromptGallery';
 import HistoryPanel from './components/HistoryPanel';
 import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, AISource, Language } from './types';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail } from './utils/psdHelper';
-import { generateImage, analyzeImage, ImageHistoryItem } from './services/apiService';
+import {
+  generateImage,
+  analyzeImage,
+  ImageHistoryItem,
+  clearFeishuAccessToken,
+  FEISHU_TOKEN_STORAGE_KEY,
+} from './services/apiService';
 import { t } from './utils/i18n';
 import { PromptExample } from './utils/promptExamples';
 
@@ -725,6 +731,21 @@ const App: React.FC = () => {
                       <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
                   </div>
                   <div className="p-6 space-y-6">
+                      {typeof localStorage !== 'undefined' &&
+                        localStorage.getItem(FEISHU_TOKEN_STORAGE_KEY) && (
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                clearFeishuAccessToken();
+                                window.location.reload();
+                              }}
+                              className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-750"
+                            >
+                              {t(language, 'feishuLogout')}
+                            </button>
+                          </div>
+                        )}
                       <div>
                           <label className="block text-[10px] font-black text-slate-500 uppercase mb-3 tracking-widest">{t(language, 'language')}</label>
                           <div className="flex gap-2">

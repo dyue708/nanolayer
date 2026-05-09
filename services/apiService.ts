@@ -65,6 +65,62 @@ export interface ImageHistoryResponse {
   limit: number;
 }
 
+/** 飞书网页授权拿到的 user_access_token；启用后端 FEISHU_ALLOWED_TENANT_KEY 后由登录流程写入 */
+export const FEISHU_TOKEN_STORAGE_KEY = 'nanolayer_feishu_user_access_token';
+
+export function clearFeishuAccessToken() {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.removeItem(FEISHU_TOKEN_STORAGE_KEY);
+}
+
+export async function getFeishuAuthStatus(): Promise<{
+  authRequired: boolean;
+  appId?: string;
+}> {
+  const res = await fetch(`${API_BASE_URL}/auth/feishu/status`);
+  if (!res.ok) {
+    throw new Error(`无法获取登录策略: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function exchangeFeishuOAuthCode(code: string): Promise<{
+  access_token: string;
+  expires_in?: number;
+  refresh_token?: string;
+  refresh_expires_in?: number;
+}> {
+  const res = await fetch(`${API_BASE_URL}/auth/feishu/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error((body as { error?: string }).error || `登录交换失败: ${res.status}`);
+  }
+  return body as {
+    access_token: string;
+    expires_in?: number;
+    refresh_token?: string;
+    refresh_expires_in?: number;
+  };
+}
+
+export async function getFeishuMe(): Promise<{
+  code: number;
+  data: Record<string, unknown>;
+  msg: string;
+}> {
+  return request('/auth/feishu/me', { method: 'GET' });
+}
+
+function feishuAuthHeaders(): Record<string, string> {
+  if (typeof localStorage === 'undefined') return {};
+  const token = localStorage.getItem(FEISHU_TOKEN_STORAGE_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 /**
  * 通用请求函数
  */
@@ -74,6 +130,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...feishuAuthHeaders(),
       ...options.headers,
     },
   });

@@ -10,8 +10,77 @@ import { uploadImage } from '../services/ossService.js';
 import { dbService } from '../services/dbService.js';
 import { costService } from '../services/costService.js';
 import sharp from 'sharp';
+import { requireFeishuTenantWhenConfigured } from '../middleware/requireFeishuTenant.js';
 
 const router = express.Router();
+
+/**
+ * GET /api/images/proxy
+ * 必须在租户校验中间件之前注册：浏览器 <img> 无法携带 Authorization。
+ */
+router.get('/proxy', async (req, res) => {
+  try {
+    const imageUrl = req.query.url as string;
+
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'url parameter is required' });
+    }
+
+    let buffer: Buffer;
+    let contentType = 'image/png';
+
+    if (imageUrl.includes('oss-') && imageUrl.includes('.aliyuncs.com')) {
+      try {
+        const { getOSSClient } = await import('../services/ossService.js');
+        const ossClient = getOSSClient();
+
+        const urlObj = new URL(imageUrl);
+        let objectName = urlObj.pathname;
+
+        if (objectName.startsWith('/')) {
+          objectName = objectName.substring(1);
+        }
+
+        console.log('Fetching from OSS, object name:', objectName);
+
+        const result = await (ossClient as any).get(objectName);
+        if (result.content) {
+          buffer = Buffer.isBuffer(result.content)
+            ? result.content
+            : Buffer.from(result.content);
+        } else {
+          throw new Error('No content returned from OSS');
+        }
+        contentType = result.res?.headers?.['content-type'] || result.res?.headers?.['Content-Type'] || 'image/png';
+        console.log('OSS get successful, content type:', contentType);
+      } catch (ossError: any) {
+        console.error('OSS SDK failed:', ossError);
+        return res.status(500).json({
+          error: `Failed to fetch image from OSS: ${ossError.message}`,
+          hint: 'Please check OSS configuration in .env file',
+        });
+      }
+    } else {
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        return res.status(response.status).json({ error: `Failed to fetch image: ${response.statusText}` });
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+      contentType = response.headers.get('content-type') || 'image/png';
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+
+    res.send(buffer);
+  } catch (error: any) {
+    console.error('Error proxying image:', error);
+    res.status(500).json({ error: error.message || 'Failed to proxy image' });
+  }
+});
+
+router.use(requireFeishuTenantWhenConfigured);
 
 interface GenerateRequest {
   prompt: string;
@@ -269,84 +338,6 @@ router.get('/history', async (req, res) => {
   } catch (error: any) {
     console.error('Error fetching history:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch history' });
-  }
-});
-
-/**
- * GET /api/images/proxy
- * 代理图片请求，从 OSS 或其他 URL 获取图片并返回给前端
- * 注意：必须在 /:id 路由之前定义，避免路由冲突
- */
-router.get('/proxy', async (req, res) => {
-  try {
-    const imageUrl = req.query.url as string;
-    
-    if (!imageUrl) {
-      return res.status(400).json({ error: 'url parameter is required' });
-    }
-
-    let buffer: Buffer;
-    let contentType = 'image/png';
-
-    // 检查是否是 OSS URL
-    if (imageUrl.includes('oss-') && imageUrl.includes('.aliyuncs.com')) {
-      // 使用 OSS SDK 获取图片（OSS 可能是私有访问）
-      try {
-        const { getOSSClient } = await import('../services/ossService.js');
-        const ossClient = getOSSClient();
-        
-        // 从 URL 中提取 object name
-        // URL 格式: http://bucket-name.oss-region.aliyuncs.com/path/to/file.png
-        // 或: http://oss-region.aliyuncs.com/bucket-name/path/to/file.png
-        const urlObj = new URL(imageUrl);
-        let objectName = urlObj.pathname;
-        
-        // 移除开头的 /（如果有）
-        if (objectName.startsWith('/')) {
-          objectName = objectName.substring(1);
-        }
-        
-        console.log('Fetching from OSS, object name:', objectName);
-        
-        // 使用 OSS SDK 的 get 方法获取文件
-        const result = await (ossClient as any).get(objectName);
-        if (result.content) {
-          buffer = Buffer.isBuffer(result.content) 
-            ? result.content 
-            : Buffer.from(result.content);
-        } else {
-          throw new Error('No content returned from OSS');
-        }
-        contentType = result.res?.headers?.['content-type'] || result.res?.headers?.['Content-Type'] || 'image/png';
-        console.log('OSS get successful, content type:', contentType);
-      } catch (ossError: any) {
-        console.error('OSS SDK failed:', ossError);
-        // 如果 OSS SDK 失败（可能是配置问题），返回错误
-        return res.status(500).json({ 
-          error: `Failed to fetch image from OSS: ${ossError.message}`,
-          hint: 'Please check OSS configuration in .env file'
-        });
-      }
-    } else {
-      // 非 OSS URL，直接 fetch
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        return res.status(response.status).json({ error: `Failed to fetch image: ${response.statusText}` });
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      buffer = Buffer.from(arrayBuffer);
-      contentType = response.headers.get('content-type') || 'image/png';
-    }
-    
-    // 设置响应头
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 缓存一年
-    
-    // 返回图片数据
-    res.send(buffer);
-  } catch (error: any) {
-    console.error('Error proxying image:', error);
-    res.status(500).json({ error: error.message || 'Failed to proxy image' });
   }
 });
 

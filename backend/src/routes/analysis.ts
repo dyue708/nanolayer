@@ -1,6 +1,9 @@
 import express from 'express';
+import { requireFeishuTenantWhenConfigured } from '../middleware/requireFeishuTenant.js';
 
 const router = express.Router();
+
+router.use(requireFeishuTenantWhenConfigured);
 
 /**
  * POST /api/analysis/analyze

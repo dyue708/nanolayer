@@ -83,6 +83,17 @@ export const translations = {
     allCategories: "All Categories",
     history: "History",
     noHistory: "No history yet",
+
+    feishuGateTitle: "Organization sign-in required",
+    feishuGateSubtitle: "Sign in with Feishu. Only members of an allowed organization can use this app.",
+    feishuGateChecking: "Checking access policy…",
+    feishuLoginButton: "Sign in with Feishu",
+    feishuRedirectHint: "This redirect URL must match your Feishu app settings:",
+    feishuLoginStateError: "Login state mismatch. Please try again.",
+    feishuMissingAppId: "Server is missing FEISHU_APP_ID. Check backend configuration.",
+    feishuLogout: "Sign out (Feishu)",
+    feishuRetry: "Retry",
+    feishuAccessDenied: "Authorization was cancelled or denied.",
   },
   zh: {
     appTitle: "NanoLayer",
@@ -165,6 +176,17 @@ export const translations = {
     allCategories: "全部",
     history: "历史记录",
     noHistory: "暂无历史记录",
+
+    feishuGateTitle: "需要组织账号登录",
+    feishuGateSubtitle: "请使用飞书登录，且仅限配置允许的租户（组织）成员访问本应用。",
+    feishuGateChecking: "正在检查访问策略…",
+    feishuLoginButton: "飞书登录",
+    feishuRedirectHint: "以下地址需与飞书开放平台应用「重定向 URL」完全一致：",
+    feishuLoginStateError: "登录校验失败（state 不匹配），请重试。",
+    feishuMissingAppId: "服务端未配置 FEISHU_APP_ID，请检查后端环境变量。",
+    feishuLogout: "退出飞书账号",
+    feishuRetry: "重试",
+    feishuAccessDenied: "你已取消或未同意授权。",
   }
 };
 
