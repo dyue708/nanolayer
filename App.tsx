@@ -7,7 +7,7 @@ import ConfigPanel from './components/ConfigPanel';
 import PromptBar from './components/PromptBar';
 import PromptGallery from './components/PromptGallery';
 import HistoryPanel from './components/HistoryPanel';
-import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, AISource, Language, AspectRatio, ImageResolution } from './types';
+import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, AISource, Language } from './types';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail } from './utils/psdHelper';
 import { generateImage, analyzeImage, ImageHistoryItem } from './services/apiService';
 import { t } from './utils/i18n';
@@ -27,8 +27,6 @@ const App: React.FC = () => {
   
   const [showConfigPanel, setShowConfigPanel] = useState(true);
   const [systemInstruction, setSystemInstruction] = useState('');
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio | undefined>(undefined);
-  const [resolution, setResolution] = useState<ImageResolution>('1K');
   const [selectedModel, setSelectedModel] = useState<ImageGenerationModel>('fal-ai/nano-banana');
   const [aiSource, setAiSource] = useState<AISource>('fal');
   
@@ -40,7 +38,7 @@ const App: React.FC = () => {
   const pendingPromptRef = useRef<PromptExample | null>(null);
 
   const [showSettings, setShowSettings] = useState(false);
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>('zh');
   const [reusedPrompt, setReusedPrompt] = useState<string | undefined>(undefined);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
 
@@ -270,9 +268,7 @@ const App: React.FC = () => {
           imageBase64: activeLayer ? canvasToBase64(activeLayer.canvas) : undefined,
           selection: selectionPercent,
           referenceImages: referenceBase64s.length > 0 ? referenceBase64s : undefined,
-          systemInstruction: systemInstruction || undefined,
-          aspectRatio: aspectRatio,
-          resolution: resolution
+          systemInstruction: systemInstruction || undefined
       });
       
       console.log('API response:', result);
@@ -301,7 +297,7 @@ const App: React.FC = () => {
       });
 
       let resultCanvas: HTMLCanvasElement;
-      if (aspectRatio || !activeLayer) {
+      if (!activeLayer) {
           resultCanvas = document.createElement('canvas');
           resultCanvas.width = result.width;
           resultCanvas.height = result.height;
@@ -700,10 +696,6 @@ const App: React.FC = () => {
                         onSystemInstructionChange={setSystemInstruction}
                         onApplyTemplate={handleApplyTemplate}
                         onOpenGallery={() => setShowGallery(true)}
-                        aspectRatio={aspectRatio}
-                        onAspectRatioChange={setAspectRatio}
-                        resolution={resolution}
-                        onResolutionChange={setResolution}
                     />
                 )}
             </div>

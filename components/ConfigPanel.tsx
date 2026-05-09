@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ImageGenerationModel, AISource, VERTEX_SUPPORTED_MODELS, Language, AspectRatio, ImageResolution, Layer } from '../types';
+import { ImageGenerationModel, AISource, VERTEX_SUPPORTED_MODELS, Language, Layer } from '../types';
 import { t } from '../utils/i18n';
 
 interface ConfigPanelProps {
@@ -28,11 +28,6 @@ interface ConfigPanelProps {
   // Gallery
   onOpenGallery: () => void;
 
-  // Config State
-  aspectRatio: AspectRatio | undefined;
-  onAspectRatioChange: (val: AspectRatio | undefined) => void;
-  resolution: ImageResolution;
-  onResolutionChange: (val: ImageResolution) => void;
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
@@ -48,11 +43,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
   systemInstruction,
   onSystemInstructionChange,
   onApplyTemplate,
-  onOpenGallery,
-  aspectRatio,
-  onAspectRatioChange,
-  resolution,
-  onResolutionChange
+  onOpenGallery
 }) => {
 
   // For mobile view, we might render differently or just use full width
@@ -295,52 +286,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                 placeholder={t(lang, 'sysInstructionPlaceholder')}
                 className="w-full bg-slate-800 border border-slate-700 rounded-md p-3 text-xs text-white placeholder-slate-500 focus:border-blue-500 outline-none resize-y min-h-[80px]"
              />
-        </section>
-
-        <hr className="border-slate-800" />
-
-        {/* Output Configuration */}
-        <section>
-             <label className="block text-[10px] text-slate-500 uppercase font-bold mb-3">{t(lang, 'outputConfig')}</label>
-             <div className="grid grid-cols-2 gap-3">
-                <div>
-                    <span className="block text-[10px] text-slate-400 mb-1">{t(lang, 'aspectRatio')}</span>
-                    <select 
-                        value={aspectRatio || ''} 
-                        onChange={(e) => onAspectRatioChange(e.target.value ? e.target.value as AspectRatio : undefined)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded text-xs text-white p-2 focus:border-blue-500 outline-none cursor-pointer hover:bg-slate-750"
-                    >
-                        <option value="">{t(lang, 'ratioOriginal')}</option>
-                        <option value="1:1">1:1 (Square)</option>
-                        <option value="16:9">16:9 (Landscape)</option>
-                        <option value="9:16">9:16 (Portrait)</option>
-                        <option value="4:3">4:3</option>
-                        <option value="3:4">3:4</option>
-                    </select>
-                </div>
-                <div>
-                    <span className="block text-[10px] text-slate-400 mb-1">{t(lang, 'resolution')}</span>
-                    <select 
-                        value={resolution}
-                        onChange={(e) => onResolutionChange(e.target.value as ImageResolution)}
-                        disabled={
-                          selectedModel !== 'fal-ai/nano-banana-pro' &&
-                          selectedModel !== 'fal-ai/nano-banana-2'
-                        }
-                        className={`w-full bg-slate-800 border border-slate-700 rounded text-xs text-white p-2 focus:border-blue-500 outline-none ${
-                          selectedModel !== 'fal-ai/nano-banana-pro' &&
-                          selectedModel !== 'fal-ai/nano-banana-2'
-                            ? 'opacity-50 cursor-not-allowed'
-                            : 'cursor-pointer hover:bg-slate-750'
-                        }`}
-                    >
-                        <option value="0.5K">0.5K (Fast / Cheap)</option>
-                        <option value="1K">1K (Std)</option>
-                        <option value="2K">2K (Pro)</option>
-                        <option value="4K">4K (Pro)</option>
-                    </select>
-                </div>
-            </div>
         </section>
 
       </div>
