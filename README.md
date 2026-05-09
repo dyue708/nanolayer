@@ -61,6 +61,7 @@ nanolayer/
 ## 文档
 
 - [部署文档](./DEPLOYMENT.md) - 生产环境部署指南
+- [用户使用手册](./USER_GUIDE.md) - 页面功能与操作指南
 - [后端 README](./backend/README.md) - 后端 API 文档
 
 ## 许可证
