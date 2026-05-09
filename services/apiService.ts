@@ -68,6 +68,20 @@ export interface ImageHistoryResponse {
 /** 飞书网页授权拿到的 user_access_token；启用后端 FEISHU_ALLOWED_TENANT_KEY 后由登录流程写入 */
 export const FEISHU_TOKEN_STORAGE_KEY = 'nanolayer_feishu_user_access_token';
 
+function abortAfter(ms: number): AbortSignal {
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
+}
+
+function requestTimeoutSignal(ms: number): AbortSignal {
+  const anySig = AbortSignal as typeof AbortSignal & { timeout?: (n: number) => AbortSignal };
+  if (typeof anySig.timeout === 'function') {
+    return anySig.timeout(ms);
+  }
+  return abortAfter(ms);
+}
+
 export function clearFeishuAccessToken() {
   if (typeof localStorage === 'undefined') return;
   localStorage.removeItem(FEISHU_TOKEN_STORAGE_KEY);
@@ -77,14 +91,23 @@ export async function getFeishuAuthStatus(): Promise<{
   authRequired: boolean;
   appId?: string;
 }> {
-  const res = await fetch(`${API_BASE_URL}/auth/feishu/status`, {
-    cache: 'no-store',
-    headers: {
-      Accept: 'application/json',
-      'Cache-Control': 'no-cache',
-      Pragma: 'no-cache',
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/auth/feishu/status`, {
+      cache: 'no-store',
+      signal: requestTimeoutSignal(15000),
+      headers: {
+        Accept: 'application/json',
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+    });
+  } catch (e: unknown) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error('获取登录策略超时，请确认能访问本站 /api 或稍后重试');
+    }
+    throw e;
+  }
   if (!res.ok) {
     const hint =
       res.status === 304
@@ -119,12 +142,22 @@ export async function exchangeFeishuOAuthCode(code: string): Promise<{
   };
 }
 
-export async function getFeishuMe(): Promise<{
+export async function getFeishuMe(timeoutMs = 15000): Promise<{
   code: number;
   data: Record<string, unknown>;
   msg: string;
 }> {
-  return request('/auth/feishu/me', { method: 'GET' });
+  try {
+    return await request('/auth/feishu/me', {
+      method: 'GET',
+      signal: requestTimeoutSignal(timeoutMs),
+    });
+  } catch (e: unknown) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error('校验登录状态超时，请稍后重试');
+    }
+    throw e;
+  }
 }
 
 function feishuAuthHeaders(): Record<string, string> {

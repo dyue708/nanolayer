@@ -52,6 +52,6 @@ services:
         max-file: "5"
     networks:
       - nanolayer-network
-    environment:
-      - VITE_API_BASE_URL=http://localhost:3001/api
+    # 前端为构建期打包 import.meta.env；运行时此处变量不会写入 JS。
+    # 生产环境应使用同源 /api（由 nginx 代理后端），勿把 API 指到 localhost。
 

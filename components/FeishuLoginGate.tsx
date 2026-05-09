@@ -68,9 +68,31 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
   const [appId, setAppId] = useState<string>('');
+  /** 预生成的授权 URL（原生 <a href> 跳转，避免线上仅有按钮点击无效的情况） */
+  const [loginHref, setLoginHref] = useState<string | null>(null);
+
+  const enterLoginPhase = useCallback((aid: string, message: string | null = null) => {
+    const trimmed = aid.trim();
+    setAuthRequired(true);
+    setAppId(trimmed);
+    setError(message);
+    if (!trimmed) {
+      setLoginHref(null);
+      setPhase('login');
+      return;
+    }
+    try {
+      setLoginHref(buildFeishuAuthorizeUrl(trimmed));
+    } catch (err: unknown) {
+      setLoginHref(null);
+      setError(err instanceof Error ? err.message : String(err));
+    }
+    setPhase('login');
+  }, []);
 
   const bootstrap = useCallback(async () => {
     setError(null);
+    setLoginHref(null);
     try {
       const status = await getFeishuAuthStatus();
       if (!status.authRequired) {
@@ -78,24 +100,25 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
         return;
       }
 
-      setAuthRequired(true);
       const aid = (status.appId ?? '').trim();
-      setAppId(aid);
       if (!aid) {
+        setAuthRequired(true);
+        setAppId('');
         setError(t(lang, 'feishuMissingAppId'));
+        setLoginHref(null);
         setPhase('login');
         return;
       }
+      setAppId(aid);
 
       const params = new URLSearchParams(window.location.search);
       const oauthError = params.get('error');
       if (oauthError === 'access_denied') {
-        setError(t(lang, 'feishuAccessDenied'));
         const url = new URL(window.location.href);
         url.searchParams.delete('error');
         url.searchParams.delete('state');
         window.history.replaceState({}, '', url.pathname + url.search + url.hash);
-        setPhase('login');
+        enterLoginPhase(aid, t(lang, 'feishuAccessDenied'));
         return;
       }
 
@@ -105,8 +128,7 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
 
       if (code) {
         if (expectedState && state && state !== expectedState) {
-          setError(t(lang, 'feishuLoginStateError'));
-          setPhase('login');
+          enterLoginPhase(aid, t(lang, 'feishuLoginStateError'));
           return;
         }
         if (state && expectedState) {
@@ -117,23 +139,23 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
           await exchangeOAuthCodeOnce(code);
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
-          setError(msg);
-          setPhase('login');
+          enterLoginPhase(aid, msg);
           return;
         }
       }
 
       const token = localStorage.getItem(FEISHU_TOKEN_STORAGE_KEY);
       if (!token) {
-        setPhase('login');
+        enterLoginPhase(aid, null);
         return;
       }
 
       try {
-        await getFeishuMe();
-      } catch {
+        await getFeishuMe(15000);
+      } catch (e: unknown) {
         localStorage.removeItem(FEISHU_TOKEN_STORAGE_KEY);
-        setPhase('login');
+        const msg = e instanceof Error ? e.message : null;
+        enterLoginPhase(aid, msg);
         return;
       }
 
@@ -143,20 +165,11 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
       setError(msg);
       setPhase('policy_error');
     }
-  }, [lang]);
+  }, [lang, enterLoginPhase]);
 
   useEffect(() => {
     bootstrap();
   }, [bootstrap]);
-
-  const startLogin = () => {
-    setError(null);
-    if (!appId) {
-      setError(t(lang, 'feishuMissingAppId'));
-      return;
-    }
-    window.location.href = buildFeishuAuthorizeUrl(appId);
-  };
 
   if (phase === 'app') {
     return <>{children}</>;
@@ -208,13 +221,17 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
                 {error}
               </div>
             )}
-            <button
-              type="button"
-              onClick={startLogin}
-              className="mt-8 w-full rounded-xl bg-blue-600 py-3 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
-            >
-              {t(lang, 'feishuLoginButton')}
-            </button>
+            {loginHref ? (
+              <a
+                href={loginHref}
+                rel="noopener noreferrer"
+                className="mt-8 flex w-full items-center justify-center rounded-xl bg-blue-600 py-3 text-center text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
+              >
+                {t(lang, 'feishuLoginButton')}
+              </a>
+            ) : (
+              <p className="mt-8 text-center text-sm text-amber-400/90">{t(lang, 'feishuMissingAppId')}</p>
+            )}
             <p className="mt-4 text-center text-[11px] text-slate-500 leading-relaxed">
               {t(lang, 'feishuRedirectHint')}
               <code className="block mt-2 break-all rounded bg-slate-950 px-2 py-1 text-slate-400">
