@@ -22,8 +22,20 @@ function redirectUriForOAuth(): string {
   return `${window.location.origin}/`;
 }
 
+/** OAuth state：在非安全上下文（http + IP）下浏览器可能没有 crypto.randomUUID() */
+function oauthRandomState(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
+    const r = (Math.random() * 16) | 0;
+    const v = ch === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 function buildFeishuAuthorizeUrl(appId: string): string {
-  const state = crypto.randomUUID();
+  const state = oauthRandomState();
   sessionStorage.setItem('nanolayer_feishu_oauth_state', state);
   const uri = redirectUriForOAuth();
   const u = new URL('https://accounts.feishu.cn/open-apis/authen/v1/authorize');
@@ -229,9 +241,9 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
               >
                 {t(lang, 'feishuLoginButton')}
               </a>
-            ) : (
+            ) : !error ? (
               <p className="mt-8 text-center text-sm text-amber-400/90">{t(lang, 'feishuMissingAppId')}</p>
-            )}
+            ) : null}
             <p className="mt-4 text-center text-[11px] text-slate-500 leading-relaxed">
               {t(lang, 'feishuRedirectHint')}
               <code className="block mt-2 break-all rounded bg-slate-950 px-2 py-1 text-slate-400">
