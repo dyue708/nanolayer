@@ -132,6 +132,16 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                     <p className="text-xs text-slate-300 truncate mb-1" title={image.prompt}>
                       {image.prompt.substring(0, 30)}...
                     </p>
+                    {typeof image.metadata?.generatedByDisplayName === 'string' &&
+                      image.metadata.generatedByDisplayName.trim() !== '' && (
+                        <p
+                          className="text-[10px] text-slate-400 truncate mb-1"
+                          title={image.metadata.generatedByDisplayName}
+                        >
+                          <span className="text-slate-500">{t(lang, 'historyGeneratedBy')}: </span>
+                          {image.metadata.generatedByDisplayName.trim()}
+                        </p>
+                      )}
                     <div className="flex justify-between items-center text-[10px] text-slate-500">
                       <span>${(typeof image.cost === 'number' ? image.cost : parseFloat(image.cost || '0')).toFixed(4)}</span>
                       <span>{new Date(image.created_at).toLocaleDateString()}</span>

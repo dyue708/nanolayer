@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Request } from 'express';
 import { generateImage, editImage } from '../services/falService.js';
 import {
   generateImageVertex,
@@ -132,10 +132,18 @@ async function getImageDimensions(imageData: string): Promise<{ width: number; h
  * POST /api/images/generate
  * 生成或编辑图片
  */
+function feishuDisplayName(req: Request): string | undefined {
+  const u = req.feishuUser;
+  if (!u) return undefined;
+  const raw = (u.name || u.en_name || '').trim();
+  return raw || undefined;
+}
+
 router.post('/generate', async (req, res) => {
   try {
     const body: GenerateRequest = req.body;
     const { prompt, model, aiSource, imageBase64, selection, referenceImages, systemInstruction, aspectRatio, resolution, userId } = body;
+    const generatedByDisplayName = feishuDisplayName(req);
 
     if (!prompt || !model) {
       return res.status(400).json({ error: 'prompt and model are required' });
@@ -272,7 +280,10 @@ router.post('/generate', async (req, res) => {
         height: dimensions.height,
         aspectRatio,
         resolution,
-        requestId: falResult.requestId
+        requestId: falResult.requestId,
+        ...(generatedByDisplayName
+          ? { generatedByDisplayName }
+          : {}),
       }
     });
 
