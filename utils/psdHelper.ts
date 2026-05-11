@@ -1,5 +1,5 @@
 
-import { Layer } from '../types';
+import { Layer, SelectionRect } from '../types';
 import { readPsd, writePsd, Psd } from 'ag-psd'; // Assuming ag-psd is installed in the environment
 
 /**
@@ -179,6 +179,89 @@ export const exportToPsd = (layers: Layer[], width: number, height: number) => {
 
 export const canvasToBase64 = (canvas: HTMLCanvasElement): string => {
     return canvas.toDataURL('image/png');
+}
+
+/** Smallest integer width×height that covers minW×minH while matching ratioW:ratioH. */
+export function minCanvasSizeForAspect(
+    minW: number,
+    minH: number,
+    ratioW: number,
+    ratioH: number
+): { width: number; height: number } {
+    const r = ratioW / ratioH;
+    let W = Math.max(1, Math.floor(minW));
+    let H = Math.max(1, Math.floor(minH));
+    const cur = W / H;
+    if (cur > r) {
+        H = Math.max(H, Math.ceil(W / r));
+        W = Math.max(W, Math.ceil(H * r));
+    } else {
+        W = Math.max(W, Math.ceil(H * r));
+        H = Math.max(H, Math.ceil(W / r));
+    }
+    return { width: W, height: H };
+}
+
+/**
+ * Transparent pad around layer bitmap to reach target size (never below layer size).
+ * Layer content is centered on the padded canvas for API edit input.
+ */
+export function buildPaddedEditSource(
+    layer: Layer,
+    targetW: number,
+    targetH: number
+): { base64: string; offsetX: number; offsetY: number; width: number; height: number } {
+    const lw = layer.canvas.width;
+    const lh = layer.canvas.height;
+    const W = Math.max(Math.floor(targetW), lw);
+    const H = Math.max(Math.floor(targetH), lh);
+    const offX = Math.floor((W - lw) / 2);
+    const offY = Math.floor((H - lh) / 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        ctx.clearRect(0, 0, W, H);
+        ctx.drawImage(layer.canvas, offX, offY);
+    }
+    return {
+        base64: canvasToBase64(canvas),
+        offsetX: offX,
+        offsetY: offY,
+        width: W,
+        height: H,
+    };
+}
+
+/** Workspace selection → percentages on padded edit image (matches upload to model). */
+export function mapSelectionToPaddedImagePercent(
+    selection: SelectionRect,
+    layer: Layer,
+    padW: number,
+    padH: number,
+    offX: number,
+    offY: number
+): { x: number; y: number; width: number; height: number } | undefined {
+    const lx = layer.x;
+    const ly = layer.y;
+    const lw = layer.canvas.width;
+    const lh = layer.canvas.height;
+    const sx1 = Math.max(selection.x, lx);
+    const sy1 = Math.max(selection.y, ly);
+    const sx2 = Math.min(selection.x + selection.width, lx + lw);
+    const sy2 = Math.min(selection.y + selection.height, ly + lh);
+    if (sx2 <= sx1 || sy2 <= sy1) return undefined;
+    const px1 = offX + (sx1 - lx);
+    const py1 = offY + (sy1 - ly);
+    const pw = sx2 - sx1;
+    const ph = sy2 - sy1;
+    return {
+        x: Math.round((px1 / padW) * 100),
+        y: Math.round((py1 / padH) * 100),
+        width: Math.round((pw / padW) * 100),
+        height: Math.round((ph / padH) * 100),
+    };
 }
 
 export const base64ToCanvas = async (base64: string, width: number, height: number): Promise<HTMLCanvasElement> => {

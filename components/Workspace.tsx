@@ -47,8 +47,9 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw layers in order (bottom to top)
-    layers.forEach((layer) => {
+    // Draw by zIndex ascending so the stack matches the layer list (top = largest zIndex)
+    const drawOrder = [...layers].sort((a, b) => a.zIndex - b.zIndex);
+    drawOrder.forEach((layer) => {
       if (layer.visible) {
         ctx.globalAlpha = layer.opacity;
         // Draw layer at its specific coordinates

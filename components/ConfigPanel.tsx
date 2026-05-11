@@ -2,6 +2,7 @@
 import React from 'react';
 import { ImageGenerationModel, AISource, VERTEX_SUPPORTED_MODELS, Language, Layer } from '../types';
 import { t } from '../utils/i18n';
+import { minCanvasSizeForAspect } from '../utils/psdHelper';
 
 interface ConfigPanelProps {
   isOpen: boolean;
@@ -11,6 +12,12 @@ interface ConfigPanelProps {
   // Active Layer for Details
   activeLayer: Layer | undefined;
   onReusePrompt: (prompt: string) => void;
+
+  editOutputWidth: number;
+  editOutputHeight: number;
+  onEditOutputWidthChange: (w: number) => void;
+  onEditOutputHeightChange: (h: number) => void;
+  onResetEditOutputToLayer: () => void;
 
   // Model State
   selectedModel: ImageGenerationModel;
@@ -36,6 +43,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
   lang,
   activeLayer,
   onReusePrompt,
+  editOutputWidth,
+  editOutputHeight,
+  onEditOutputWidthChange,
+  onEditOutputHeightChange,
+  onResetEditOutputToLayer,
   selectedModel,
   onSelectModel,
   aiSource,
@@ -109,8 +121,82 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
             )}
         </section>
 
+        {activeLayer && (
+          <>
+            <hr className="border-slate-800" />
+            <section className="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50 space-y-3">
+              <label className="block text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
+                <i className="fa-solid fa-expand"></i> {t(lang, 'editOutputSectionTitle')}
+              </label>
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                {lang === 'zh'
+                  ? `宽/高不得小于当前图层像素 (${activeLayer.canvas.width}×${activeLayer.canvas.height})。不足区域在前端透明填充后再发给模型。`
+                  : `Min size is the layer (${activeLayer.canvas.width}×${activeLayer.canvas.height} px). Extra area is transparent padding before upload.`}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-[10px] text-slate-500 block mb-1">W</span>
+                  <input
+                    type="number"
+                    min={activeLayer.canvas.width}
+                    max={16384}
+                    value={editOutputWidth}
+                    onChange={(e) => onEditOutputWidthChange(Number(e.target.value))}
+                    className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block mb-1">H</span>
+                  <input
+                    type="number"
+                    min={activeLayer.canvas.height}
+                    max={16384}
+                    value={editOutputHeight}
+                    onChange={(e) => onEditOutputHeightChange(Number(e.target.value))}
+                    className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white font-mono"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { rw: 1, rh: 1 },
+                  { rw: 4, rh: 3 },
+                  { rw: 3, rh: 4 },
+                  { rw: 16, rh: 9 },
+                  { rw: 9, rh: 16 },
+                ].map(({ rw, rh }) => (
+                  <button
+                    key={`${rw}:${rh}`}
+                    type="button"
+                    onClick={() => {
+                      const { width, height } = minCanvasSizeForAspect(
+                        activeLayer.canvas.width,
+                        activeLayer.canvas.height,
+                        rw,
+                        rh
+                      );
+                      onEditOutputWidthChange(width);
+                      onEditOutputHeightChange(height);
+                    }}
+                    className="text-[10px] px-2 py-1 rounded border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-300"
+                  >
+                    {rw}:{rh}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={onResetEditOutputToLayer}
+                className="w-full py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 transition-colors"
+              >
+                {t(lang, 'editOutputMatchLayer')}
+              </button>
+            </section>
+          </>
+        )}
+
         <hr className="border-slate-800" />
-        
+
         {/* AI Source Toggle */}
         <section>
             <label className="block text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center gap-1">

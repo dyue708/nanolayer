@@ -8,7 +8,7 @@ import PromptBar from './components/PromptBar';
 import PromptGallery from './components/PromptGallery';
 import HistoryPanel from './components/HistoryPanel';
 import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, AISource, Language } from './types';
-import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail } from './utils/psdHelper';
+import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail, buildPaddedEditSource, mapSelectionToPaddedImagePercent } from './utils/psdHelper';
 import {
   generateImage,
   analyzeImage,
@@ -50,31 +50,151 @@ const App: React.FC = () => {
   const [reusedPrompt, setReusedPrompt] = useState<string | undefined>(undefined);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
 
+  /** 编辑模式下发给模型的画布尺寸（≥当前图层像素；默认随选中图层重置） */
+  const [editOutputWidth, setEditOutputWidth] = useState(1024);
+  const [editOutputHeight, setEditOutputHeight] = useState(1024);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addLayerInputRef = useRef<HTMLInputElement>(null);
+  const canvasDimsRef = useRef(canvasDims);
+  useEffect(() => {
+    canvasDimsRef.current = canvasDims;
+  }, [canvasDims]);
+
+  const addLayersFromFiles = useCallback(async (files: File[]) => {
+    const imageFiles = files.filter(
+      (f) =>
+        f.type.startsWith('image/') ||
+        /\.(png|jpg|jpeg|webp)$/i.test(f.name)
+    );
+    if (imageFiles.length === 0) return;
+
+    const entries: { file: File; img: HTMLImageElement; url: string }[] = [];
+    try {
+      setIsProcessing(true);
+      for (const file of imageFiles) {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.src = url;
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () =>
+            reject(new Error(`Failed to load: ${file.name}`));
+        });
+        entries.push({ file, img, url });
+      }
+
+      const start = canvasDimsRef.current;
+      let finalW = start.width;
+      let finalH = start.height;
+      for (const { img } of entries) {
+        finalW = Math.max(finalW, img.width);
+        finalH = Math.max(finalH, img.height);
+      }
+      canvasDimsRef.current = { width: finalW, height: finalH };
+      setCanvasDims({ width: finalW, height: finalH });
+
+      const appendLayers: Layer[] = entries.map(({ file, img }) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.drawImage(img, 0, 0);
+        return {
+          id: `layer-${crypto.randomUUID()}`,
+          name: file.name || 'Imported Image',
+          visible: true,
+          opacity: 1,
+          canvas,
+          thumbnail: generateThumbnail(canvas),
+          zIndex: 0,
+          x: (finalW - img.width) / 2,
+          y: (finalH - img.height) / 2,
+        };
+      });
+
+      const topId = appendLayers[appendLayers.length - 1].id;
+      setLayers((prev) => {
+        const zBase =
+          prev.reduce((m, l) => Math.max(m, l.zIndex), -1) + 1;
+        const withZ = appendLayers.map((l, i) => ({ ...l, zIndex: zBase + i }));
+        return [...prev, ...withZ];
+      });
+      setActiveLayerId(topId);
+      setSelection(null);
+    } catch (err) {
+      alert(
+        'Error adding layer: ' +
+          (err instanceof Error ? err.message : String(err))
+      );
+    } finally {
+      for (const { url } of entries) {
+        URL.revokeObjectURL(url);
+      }
+      setIsProcessing(false);
+    }
+  }, []);
 
   // Restore copy-paste support for direct image import
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
         const items = e.clipboardData?.items;
         if (!items) return;
+        const pasted: File[] = [];
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf("image") !== -1) {
                 const blob = items[i].getAsFile();
-                if (blob) {
-                    await addLayerFromFile(blob);
-                }
+                if (blob) pasted.push(blob);
             }
         }
+        if (pasted.length > 0) await addLayersFromFiles(pasted);
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [canvasDims, layers]);
+  }, [addLayersFromFiles]);
 
   useEffect(() => {
       const storedLang = localStorage.getItem('nano_lang');
       if (storedLang && (storedLang === 'en' || storedLang === 'zh')) setLanguage(storedLang as Language);
   }, []);
+
+  /** 切换选中图层时，编辑输出尺寸默认与图层像素一致 */
+  useEffect(() => {
+      if (!activeLayerId) return;
+      const L = layers.find((l) => l.id === activeLayerId);
+      if (!L) return;
+      setEditOutputWidth(L.canvas.width);
+      setEditOutputHeight(L.canvas.height);
+  }, [activeLayerId]);
+
+  const handleEditOutputWidthChange = useCallback(
+      (w: number) => {
+          const L = layers.find((l) => l.id === activeLayerId);
+          if (!L) return;
+          const lw = L.canvas.width;
+          const clamped = Math.max(lw, Math.min(16384, Math.floor(w)));
+          setEditOutputWidth(Number.isFinite(clamped) ? clamped : lw);
+      },
+      [activeLayerId, layers]
+  );
+
+  const handleEditOutputHeightChange = useCallback(
+      (h: number) => {
+          const L = layers.find((l) => l.id === activeLayerId);
+          if (!L) return;
+          const lh = L.canvas.height;
+          const clamped = Math.max(lh, Math.min(16384, Math.floor(h)));
+          setEditOutputHeight(Number.isFinite(clamped) ? clamped : lh);
+      },
+      [activeLayerId, layers]
+  );
+
+  const resetEditOutputToLayer = useCallback(() => {
+      const L = layers.find((l) => l.id === activeLayerId);
+      if (!L) return;
+      setEditOutputWidth(L.canvas.width);
+      setEditOutputHeight(L.canvas.height);
+  }, [activeLayerId, layers]);
 
   const saveSettings = (newLang: Language) => {
       setLanguage(newLang);
@@ -90,7 +210,9 @@ const App: React.FC = () => {
       let data;
       if (file.name.toLowerCase().endsWith('.psd')) data = await parsePsdFile(file);
       else data = await parseImageFile(file);
-      setCanvasDims({ width: data.width, height: data.height });
+      const dims = { width: data.width, height: data.height };
+      canvasDimsRef.current = dims;
+      setCanvasDims(dims);
       setLayers(data.layers);
       if (data.layers.length > 0) setActiveLayerId(data.layers[data.layers.length - 1].id);
       setSelection(null);
@@ -113,54 +235,9 @@ const App: React.FC = () => {
     }
   };
 
-  const addLayerFromFile = useCallback(async (file: File) => {
-      try {
-          setIsProcessing(true);
-          const img = new Image();
-          const url = URL.createObjectURL(file);
-          img.src = url;
-          await new Promise((resolve, reject) => {
-              img.onload = resolve;
-              img.onerror = reject;
-          });
-          
-          const newWidth = Math.max(canvasDims.width, img.width);
-          const newHeight = Math.max(canvasDims.height, img.height);
-          if (newWidth > canvasDims.width || newHeight > canvasDims.height) {
-              setCanvasDims({ width: newWidth, height: newHeight });
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) ctx.drawImage(img, 0, 0);
-
-          const newLayer: Layer = {
-              id: `layer-${Date.now()}`,
-              name: file.name || "Imported Image",
-              visible: true,
-              opacity: 1,
-              canvas: canvas,
-              thumbnail: generateThumbnail(canvas),
-              zIndex: layers.length,
-              x: (newWidth - img.width) / 2,
-              y: (newHeight - img.height) / 2
-          };
-          setLayers(prev => [...prev, newLayer]);
-          setActiveLayerId(newLayer.id);
-          setSelection(null);
-          URL.revokeObjectURL(url);
-      } catch (err) {
-          alert("Error adding layer: " + (err instanceof Error ? err.message : String(err)));
-      } finally {
-          setIsProcessing(false);
-      }
-  }, [canvasDims, layers]);
-
   const handleAddLayerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (file) await addLayerFromFile(file);
+      const list = event.target.files ? Array.from(event.target.files) : [];
+      if (list.length > 0) await addLayersFromFiles(list);
       if (addLayerInputRef.current) addLayerInputRef.current.value = '';
   };
 
@@ -249,31 +326,37 @@ const App: React.FC = () => {
     let result: any = undefined;
     try {
       const activeLayer = layers.find(l => l.id === activeLayerId);
-      let base64Img: string | undefined = undefined;
-      
-      // 计算选择区域的相对百分比
-      let selectionPercent: { x: number; y: number; width: number; height: number } | undefined = undefined;
-      if (activeLayer && selection && selection.width > 5 && selection.height > 5) {
-          const relX = Math.round(((selection.x - activeLayer.x) / activeLayer.canvas.width) * 100);
-          const relY = Math.round(((selection.y - activeLayer.y) / activeLayer.canvas.height) * 100);
-          const relW = Math.round((selection.width / activeLayer.canvas.width) * 100);
-          const relH = Math.round((selection.height / activeLayer.canvas.height) * 100);
-          selectionPercent = { x: relX, y: relY, width: relW, height: relH };
+
+      /** 编辑：透明底填充至配置的输出尺寸后再上传（尺寸不小于图层像素） */
+      let paddedEdit: ReturnType<typeof buildPaddedEditSource> | null = null;
+      if (activeLayer) {
+          paddedEdit = buildPaddedEditSource(activeLayer, editOutputWidth, editOutputHeight);
       }
 
-      // 获取参考图片
+      let selectionPercent: { x: number; y: number; width: number; height: number } | undefined = undefined;
+      if (activeLayer && selection && selection.width > 5 && selection.height > 5 && paddedEdit) {
+          const mapped = mapSelectionToPaddedImagePercent(
+              selection,
+              activeLayer,
+              paddedEdit.width,
+              paddedEdit.height,
+              paddedEdit.offsetX,
+              paddedEdit.offsetY
+          );
+          if (mapped) selectionPercent = mapped;
+      }
+
       const referenceBase64s: string[] = [];
       referenceLayerIds.forEach(id => {
           const refLayer = layers.find(l => l.id === id);
           if (refLayer) referenceBase64s.push(canvasToBase64(refLayer.canvas));
       });
 
-      // 调用后端 API
       result = await generateImage({
           prompt: promptText,
           model: selectedModel,
           aiSource,
-          imageBase64: activeLayer ? canvasToBase64(activeLayer.canvas) : undefined,
+          imageBase64: paddedEdit ? paddedEdit.base64 : undefined,
           selection: selectionPercent,
           referenceImages: referenceBase64s.length > 0 ? referenceBase64s : undefined,
           systemInstruction: systemInstruction || undefined
@@ -304,48 +387,91 @@ const App: React.FC = () => {
           }
       });
 
+      const rw =
+        result.width && result.width > 0 ? result.width : img.naturalWidth;
+      const rh =
+        result.height && result.height > 0 ? result.height : img.naturalHeight;
+
       let resultCanvas: HTMLCanvasElement;
       if (!activeLayer) {
           resultCanvas = document.createElement('canvas');
-          resultCanvas.width = result.width;
-          resultCanvas.height = result.height;
+          resultCanvas.width = rw;
+          resultCanvas.height = rh;
           const ctx = resultCanvas.getContext('2d');
           if (ctx) ctx.drawImage(img, 0, 0);
-      } else {
-          // 确保尺寸与原图层一致
+      } else if (paddedEdit) {
           resultCanvas = document.createElement('canvas');
-          resultCanvas.width = activeLayer.canvas.width;
-          resultCanvas.height = activeLayer.canvas.height;
+          resultCanvas.width = paddedEdit.width;
+          resultCanvas.height = paddedEdit.height;
           const ctx = resultCanvas.getContext('2d');
-          if (ctx) ctx.drawImage(img, 0, 0, activeLayer.canvas.width, activeLayer.canvas.height);
+          if (ctx) ctx.drawImage(img, 0, 0, paddedEdit.width, paddedEdit.height);
+      } else {
+          resultCanvas = document.createElement('canvas');
+          resultCanvas.width = activeLayer!.canvas.width;
+          resultCanvas.height = activeLayer!.canvas.height;
+          const ctx = resultCanvas.getContext('2d');
+          if (ctx)
+              ctx.drawImage(
+                  img,
+                  0,
+                  0,
+                  activeLayer!.canvas.width,
+                  activeLayer!.canvas.height
+              );
       }
 
-      // 在纯生成（无活动图层）或结果图更大时，确保主画布尺寸可容纳结果图层
-      const nextCanvasWidth = activeLayer ? canvasDims.width : Math.max(canvasDims.width, resultCanvas.width);
-      const nextCanvasHeight = activeLayer ? canvasDims.height : Math.max(canvasDims.height, resultCanvas.height);
-      if (nextCanvasWidth !== canvasDims.width || nextCanvasHeight !== canvasDims.height) {
-          setCanvasDims({ width: nextCanvasWidth, height: nextCanvasHeight });
+      const refDims = canvasDimsRef.current;
+      let nextCanvasWidth: number;
+      let nextCanvasHeight: number;
+      let placeX: number;
+      let placeY: number;
+
+      if (!activeLayer) {
+          nextCanvasWidth = Math.max(refDims.width, resultCanvas.width);
+          nextCanvasHeight = Math.max(refDims.height, resultCanvas.height);
+          placeX = (nextCanvasWidth - resultCanvas.width) / 2;
+          placeY = (nextCanvasHeight - resultCanvas.height) / 2;
+      } else if (paddedEdit) {
+          placeX = activeLayer.x - paddedEdit.offsetX;
+          placeY = activeLayer.y - paddedEdit.offsetY;
+          nextCanvasWidth = Math.max(refDims.width, placeX + resultCanvas.width);
+          nextCanvasHeight = Math.max(refDims.height, placeY + resultCanvas.height);
+      } else {
+          placeX = activeLayer.x;
+          placeY = activeLayer.y;
+          nextCanvasWidth = refDims.width;
+          nextCanvasHeight = refDims.height;
       }
 
-      const placeX = activeLayer ? activeLayer.x : (nextCanvasWidth - resultCanvas.width) / 2;
-      const placeY = activeLayer ? activeLayer.y : (nextCanvasHeight - resultCanvas.height) / 2;
+      canvasDimsRef.current = {
+          width: nextCanvasWidth,
+          height: nextCanvasHeight,
+      };
+      setCanvasDims({
+          width: nextCanvasWidth,
+          height: nextCanvasHeight,
+      });
 
+      const newLayerId = `layer-${crypto.randomUUID()}`;
       const newLayer: Layer = {
-          id: `layer-${Date.now()}`,
+          id: newLayerId,
           name: activeLayer ? `${t(language, 'toolEdit')}: ${promptText.substring(0, 15)}...` : `${t(language, 'generate')}: ${promptText.substring(0, 15)}...`,
           visible: true,
           opacity: 1,
           canvas: resultCanvas,
           thumbnail: generateThumbnail(resultCanvas),
-          zIndex: layers.length,
+          zIndex: 0,
           x: placeX,
           y: placeY,
           cost: result.cost,
           prompt: promptText
       };
-      
-      setLayers(prev => [...prev, newLayer]);
-      setActiveLayerId(newLayer.id);
+
+      setLayers((prev) => {
+          const topZ = prev.reduce((m, l) => Math.max(m, l.zIndex), -1) + 1;
+          return [...prev, { ...newLayer, zIndex: topZ }];
+      });
+      setActiveLayerId(newLayerId);
       setSelection(null);
       if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
 
@@ -489,35 +615,25 @@ const App: React.FC = () => {
               canvasToDataURL: resultCanvas.toDataURL().substring(0, 100) + '...'
           });
 
-          // 如果画布尺寸为 0，设置为图片尺寸
-          if (canvasDims.width === 0 || canvasDims.height === 0) {
-              setCanvasDims({ width: canvasWidth, height: canvasHeight });
-              console.log('Canvas dimensions set to image size:', { width: canvasWidth, height: canvasHeight });
-          } else {
-              // 如果画布已有尺寸，确保画布足够大以容纳图片
-              const newWidth = Math.max(canvasDims.width, canvasWidth);
-              const newHeight = Math.max(canvasDims.height, canvasHeight);
-              if (newWidth > canvasDims.width || newHeight > canvasDims.height) {
-                  setCanvasDims({ width: newWidth, height: newHeight });
-                  console.log('Canvas dimensions expanded:', { width: newWidth, height: newHeight });
-              }
-          }
+          // 统一用 ref 与最终尺寸计算画布与居中，避免 setState 后仍读到旧的 canvasDims
+          const startDims = canvasDimsRef.current;
+          const finalW = Math.max(startDims.width, canvasWidth);
+          const finalH = Math.max(startDims.height, canvasHeight);
+          canvasDimsRef.current = { width: finalW, height: finalH };
+          setCanvasDims({ width: finalW, height: finalH });
 
-          // 计算位置（使用当前或新的画布尺寸）
-          const currentCanvasWidth = canvasDims.width || canvasWidth;
-          const currentCanvasHeight = canvasDims.height || canvasHeight;
-          const placeX = Math.max(0, (currentCanvasWidth - resultCanvas.width) / 2);
-          const placeY = Math.max(0, (currentCanvasHeight - resultCanvas.height) / 2);
+          const placeX = Math.max(0, (finalW - resultCanvas.width) / 2);
+          const placeY = Math.max(0, (finalH - resultCanvas.height) / 2);
 
-          // 创建新图层
+          const newLayerId = `layer-${crypto.randomUUID()}`;
           const newLayer: Layer = {
-              id: `layer-${Date.now()}`,
+              id: newLayerId,
               name: `History: ${image.prompt.substring(0, 15)}...`,
               visible: true,
               opacity: 1,
               canvas: resultCanvas,
               thumbnail: generateThumbnail(resultCanvas),
-              zIndex: layers.length,
+              zIndex: 0,
               x: placeX,
               y: placeY,
               cost: image.cost,
@@ -528,15 +644,16 @@ const App: React.FC = () => {
               id: newLayer.id,
               position: { x: placeX, y: placeY },
               size: { width: canvasWidth, height: canvasHeight },
-              canvasDims: { width: currentCanvasWidth, height: currentCanvasHeight }
+              canvasDims: { width: finalW, height: finalH }
           });
           
           setLayers(prev => {
-              const newLayers = [...prev, newLayer];
+              const topZ = prev.reduce((m, l) => Math.max(m, l.zIndex), -1) + 1;
+              const newLayers = [...prev, { ...newLayer, zIndex: topZ }];
               console.log('Total layers:', newLayers.length);
               return newLayers;
           });
-          setActiveLayerId(newLayer.id);
+          setActiveLayerId(newLayerId);
           setSelection(null);
           if (mode === ToolMode.SELECT) setMode(ToolMode.EDIT);
           setShowHistory(false);
@@ -548,7 +665,7 @@ const App: React.FC = () => {
       } finally {
           setIsProcessing(false);
       }
-  }, [layers, canvasDims]);
+  }, [mode]);
 
   const handleSelectFromGallery = useCallback((example: PromptExample) => {
       if (example.requiresImage && layers.length === 0) {
@@ -571,7 +688,8 @@ const App: React.FC = () => {
       exportCanvas.height = canvasDims.height;
       const ctx = exportCanvas.getContext('2d');
       if (!ctx) return;
-      layers.forEach(layer => {
+      const drawOrder = [...layers].sort((a, b) => a.zIndex - b.zIndex);
+      drawOrder.forEach(layer => {
           if (layer.visible) {
             ctx.globalAlpha = layer.opacity;
             ctx.drawImage(layer.canvas, layer.x, layer.y);
@@ -607,7 +725,7 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".psd,.png,.jpg,.jpeg,.webp" className="hidden" />
-             <input type="file" ref={addLayerInputRef} onChange={handleAddLayerUpload} accept=".png,.jpg,.jpeg,.webp" className="hidden" />
+             <input type="file" ref={addLayerInputRef} onChange={handleAddLayerUpload} accept=".png,.jpg,.jpeg,.webp" multiple className="hidden" />
              <button onClick={() => fileInputRef.current?.click()} className="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-2">
                 <i className="fa-solid fa-folder-open text-blue-400"></i> <span className="hidden sm:inline uppercase">{t(language, 'open')}</span>
              </button>
@@ -706,6 +824,11 @@ const App: React.FC = () => {
                         lang={language}
                         activeLayer={activeLayer}
                         onReusePrompt={handleReusePrompt}
+                        editOutputWidth={editOutputWidth}
+                        editOutputHeight={editOutputHeight}
+                        onEditOutputWidthChange={handleEditOutputWidthChange}
+                        onEditOutputHeightChange={handleEditOutputHeightChange}
+                        onResetEditOutputToLayer={resetEditOutputToLayer}
                         selectedModel={selectedModel}
                         onSelectModel={setSelectedModel}
                         aiSource={aiSource}
