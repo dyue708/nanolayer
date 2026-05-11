@@ -23,6 +23,23 @@ type MobilePanel = 'none' | 'layers' | 'config' | 'tools';
 
 const USAGE_GUIDE_URL = 'https://xingye.feishu.cn/wiki/J9ykw7jwGirdZckYhjicIC3jnCd';
 
+function isPsdFile(f: File): boolean {
+  const n = f.name.toLowerCase();
+  return (
+    n.endsWith('.psd') ||
+    f.type === 'image/vnd.adobe.photoshop' ||
+    f.type === 'application/x-photoshop'
+  );
+}
+
+function isRasterImageFile(f: File): boolean {
+  if (isPsdFile(f)) return false;
+  return (
+    f.type.startsWith('image/') ||
+    /\.(png|jpg|jpeg|webp)$/i.test(f.name)
+  );
+}
+
 const App: React.FC = () => {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
@@ -61,17 +78,15 @@ const App: React.FC = () => {
     canvasDimsRef.current = canvasDims;
   }, [canvasDims]);
 
-  const addLayersFromFiles = useCallback(async (files: File[]) => {
-    const imageFiles = files.filter(
-      (f) =>
-        f.type.startsWith('image/') ||
-        /\.(png|jpg|jpeg|webp)$/i.test(f.name)
-    );
+  const addLayersFromFiles = useCallback(
+    async (files: File[], opts?: { manageProcessing?: boolean }) => {
+    const manage = opts?.manageProcessing !== false;
+    const imageFiles = files.filter((f) => isRasterImageFile(f));
     if (imageFiles.length === 0) return;
 
     const entries: { file: File; img: HTMLImageElement; url: string }[] = [];
     try {
-      setIsProcessing(true);
+      if (manage) setIsProcessing(true);
       for (const file of imageFiles) {
         const url = URL.createObjectURL(file);
         const img = new Image();
@@ -131,9 +146,73 @@ const App: React.FC = () => {
       for (const { url } of entries) {
         URL.revokeObjectURL(url);
       }
-      setIsProcessing(false);
+      if (manage) setIsProcessing(false);
     }
   }, []);
+
+  /** 将 PSD 文档以「堆叠在当前画布下方」的方式追加图层（y 偏移原画布高度） */
+  const appendPsdFromFile = useCallback(async (file: File) => {
+    const data = await parsePsdFile(file);
+    const cur = canvasDimsRef.current;
+    const baseY = cur.height;
+    const newW = Math.max(cur.width, data.width);
+    const newH = baseY + data.height;
+
+    const remapped: Layer[] = data.layers.map((l) => ({
+      ...l,
+      id: `layer-${crypto.randomUUID()}`,
+      y: l.y + baseY,
+    }));
+
+    canvasDimsRef.current = { width: newW, height: newH };
+    setCanvasDims({ width: newW, height: newH });
+
+    const topId = remapped[remapped.length - 1]?.id;
+    setLayers((prev) => {
+      const zBase = prev.reduce((m, l) => Math.max(m, l.zIndex), -1) + 1;
+      const withZ = remapped.map((layer, i) => ({ ...layer, zIndex: zBase + i }));
+      return [...prev, ...withZ];
+    });
+    if (topId) setActiveLayerId(topId);
+    setSelection(null);
+  }, []);
+
+  /** 按选择顺序追加：PSD 整份追加，连续栅格图一批居中加入 */
+  const appendFilesInOrder = useCallback(
+    async (files: File[], opts?: { manageProcessing?: boolean }) => {
+      const manage = opts?.manageProcessing !== false;
+      if (manage) setIsProcessing(true);
+      try {
+        let i = 0;
+        while (i < files.length) {
+          const f = files[i];
+          if (isPsdFile(f)) {
+            await appendPsdFromFile(f);
+            i++;
+          } else if (isRasterImageFile(f)) {
+            const batch: File[] = [];
+            while (i < files.length && isRasterImageFile(files[i])) {
+              batch.push(files[i]);
+              i++;
+            }
+            if (batch.length > 0) {
+              await addLayersFromFiles(batch, { manageProcessing: false });
+            }
+          } else {
+            i++;
+          }
+        }
+      } catch (err) {
+        alert(
+          'Error importing files: ' +
+            (err instanceof Error ? err.message : String(err))
+        );
+      } finally {
+        if (manage) setIsProcessing(false);
+      }
+    },
+    [addLayersFromFiles, appendPsdFromFile]
+  );
 
   // Restore copy-paste support for direct image import
   useEffect(() => {
@@ -203,19 +282,28 @@ const App: React.FC = () => {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const list = event.target.files ? Array.from(event.target.files) : [];
+    if (list.length === 0) return;
     try {
       setIsProcessing(true);
+      const first = list[0];
       let data;
-      if (file.name.toLowerCase().endsWith('.psd')) data = await parsePsdFile(file);
-      else data = await parseImageFile(file);
+      if (isPsdFile(first)) data = await parsePsdFile(first);
+      else if (isRasterImageFile(first)) data = await parseImageFile(first);
+      else {
+        alert('Unsupported file: ' + first.name);
+        return;
+      }
       const dims = { width: data.width, height: data.height };
       canvasDimsRef.current = dims;
       setCanvasDims(dims);
       setLayers(data.layers);
       if (data.layers.length > 0) setActiveLayerId(data.layers[data.layers.length - 1].id);
       setSelection(null);
+
+      if (list.length > 1) {
+        await appendFilesInOrder(list.slice(1), { manageProcessing: false });
+      }
     } catch (err) {
       alert("Error loading file: " + (err instanceof Error ? err.message : String(err)));
     } finally {
@@ -237,7 +325,7 @@ const App: React.FC = () => {
 
   const handleAddLayerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
       const list = event.target.files ? Array.from(event.target.files) : [];
-      if (list.length > 0) await addLayersFromFiles(list);
+      if (list.length > 0) await appendFilesInOrder(list);
       if (addLayerInputRef.current) addLayerInputRef.current.value = '';
   };
 
@@ -724,8 +812,8 @@ const App: React.FC = () => {
             </h1>
         </div>
         <div className="flex items-center gap-2">
-             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".psd,.png,.jpg,.jpeg,.webp" className="hidden" />
-             <input type="file" ref={addLayerInputRef} onChange={handleAddLayerUpload} accept=".png,.jpg,.jpeg,.webp" multiple className="hidden" />
+             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".psd,.png,.jpg,.jpeg,.webp" multiple className="hidden" />
+             <input type="file" ref={addLayerInputRef} onChange={handleAddLayerUpload} accept=".psd,.png,.jpg,.jpeg,.webp" multiple className="hidden" />
              <button onClick={() => fileInputRef.current?.click()} className="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-2">
                 <i className="fa-solid fa-folder-open text-blue-400"></i> <span className="hidden sm:inline uppercase">{t(language, 'open')}</span>
              </button>
