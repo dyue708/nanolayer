@@ -40,6 +40,10 @@ function isRasterImageFile(f: File): boolean {
   );
 }
 
+function isImportableLayerFile(f: File): boolean {
+  return isPsdFile(f) || isRasterImageFile(f);
+}
+
 const App: React.FC = () => {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
@@ -66,6 +70,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('zh');
   const [reusedPrompt, setReusedPrompt] = useState<string | undefined>(undefined);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
+  const [fileDropHover, setFileDropHover] = useState(false);
 
   /** 编辑模式下发给模型的画布尺寸（≥当前图层像素；默认随选中图层重置） */
   const [editOutputWidth, setEditOutputWidth] = useState(1024);
@@ -212,6 +217,43 @@ const App: React.FC = () => {
       }
     },
     [addLayersFromFiles, appendPsdFromFile]
+  );
+
+  const handleMainDragEnter = useCallback((e: React.DragEvent) => {
+    const types = Array.from(e.dataTransfer?.types ?? []);
+    if (!types.includes('Files')) return;
+    e.preventDefault();
+    setFileDropHover(true);
+  }, []);
+
+  const handleMainDragOver = useCallback((e: React.DragEvent) => {
+    const types = Array.from(e.dataTransfer?.types ?? []);
+    if (!types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleMainDragLeave = useCallback((e: React.DragEvent) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && e.currentTarget.contains(next)) return;
+    setFileDropHover(false);
+  }, []);
+
+  const handleMainDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      setFileDropHover(false);
+      const raw = Array.from(e.dataTransfer.files);
+      const list = raw.filter(isImportableLayerFile);
+      if (list.length === 0) {
+        if (raw.length > 0) {
+          alert(t(language, 'dropFilesUnsupported'));
+        }
+        return;
+      }
+      await appendFilesInOrder(list);
+    },
+    [appendFilesInOrder, language]
   );
 
   // Restore copy-paste support for direct image import
@@ -848,7 +890,24 @@ const App: React.FC = () => {
              </button>
         </div>
       </header>
-      <div className="flex-1 flex overflow-hidden relative">
+      <div
+        className="flex-1 flex overflow-hidden relative"
+        onDragEnter={handleMainDragEnter}
+        onDragOver={handleMainDragOver}
+        onDragLeave={handleMainDragLeave}
+        onDrop={handleMainDrop}
+      >
+        {fileDropHover && (
+          <div
+            className="absolute inset-0 z-[35] flex flex-col items-center justify-center gap-3 bg-slate-950/75 border-2 border-dashed border-blue-500 pointer-events-none"
+            aria-hidden
+          >
+            <i className="fa-solid fa-cloud-arrow-up text-4xl text-blue-400" />
+            <p className="text-sm font-semibold text-blue-100 px-6 text-center max-w-md">
+              {t(language, 'dropFilesHint')}
+            </p>
+          </div>
+        )}
         <div className="flex flex-col z-10 hidden md:flex">
             <div className="w-16 bg-slate-900 border-r border-slate-700 flex flex-col items-center py-6 gap-5 h-full">
                  <button onClick={() => setMode(ToolMode.MOVE)} className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl transition-all ${mode === ToolMode.MOVE ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`} title={t(language, 'toolMove')}>
