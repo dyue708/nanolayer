@@ -11,6 +11,43 @@ interface HistoryPanelProps {
   onReusePrompt?: (prompt: string) => void;
 }
 
+// 将存储的模型 ID（如 `fal-ai/nano-banana/edit`、`vertex/nano-banana-pro`）
+// 转换成简洁可读的展示名，例如 “Nano Banana (Vertex, Edit)”。
+const formatModelName = (raw: string | undefined | null): string => {
+  if (!raw || typeof raw !== 'string') return '-';
+  let id = raw.trim();
+  if (!id) return '-';
+
+  let source: 'fal' | 'vertex' | null = null;
+  if (id.startsWith('vertex/')) {
+    source = 'vertex';
+    id = id.slice('vertex/'.length);
+  } else if (id.startsWith('fal-ai/')) {
+    source = 'fal';
+    id = id.slice('fal-ai/'.length);
+  }
+
+  let isEdit = false;
+  if (id.endsWith('/edit')) {
+    isEdit = true;
+    id = id.slice(0, -'/edit'.length);
+  }
+
+  const baseMap: Record<string, string> = {
+    'nano-banana': 'Nano Banana',
+    'nano-banana-pro': 'Nano Banana Pro',
+    'nano-banana-2': 'Nano Banana 2',
+    'gpt-image-1.5': 'GPT Image 1.5',
+    'gpt-image-2': 'GPT Image 2',
+  };
+  const baseName = baseMap[id] || id;
+
+  const tags: string[] = [];
+  if (source === 'vertex') tags.push('Vertex');
+  if (isEdit) tags.push('Edit');
+  return tags.length > 0 ? `${baseName} (${tags.join(', ')})` : baseName;
+};
+
 const HistoryPanel: React.FC<HistoryPanelProps> = ({
   isOpen,
   onClose,
@@ -142,6 +179,15 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                           {image.metadata.generatedByDisplayName.trim()}
                         </p>
                       )}
+                    {image.model && (
+                      <p
+                        className="text-[10px] text-slate-400 truncate mb-1"
+                        title={image.model}
+                      >
+                        <span className="text-slate-500">{t(lang, 'historyModel') || 'Model'}: </span>
+                        {formatModelName(image.model)}
+                      </p>
+                    )}
                     <div className="flex justify-between items-center text-[10px] text-slate-500">
                       <span>${(typeof image.cost === 'number' ? image.cost : parseFloat(image.cost || '0')).toFixed(4)}</span>
                       <span>{new Date(image.created_at).toLocaleDateString()}</span>
