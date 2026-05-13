@@ -155,18 +155,21 @@ const App: React.FC = () => {
     }
   }, []);
 
-  /** 将 PSD 文档以「堆叠在当前画布下方」的方式追加图层（y 偏移原画布高度） */
+  /** 将 PSD 文档以「整体居中叠在当前画布上」的方式追加图层，保持 PSD 内部图层相对位置；
+   *  画布尺寸取 max(原, PSD)，与普通图片追加行为保持一致。 */
   const appendPsdFromFile = useCallback(async (file: File) => {
     const data = await parsePsdFile(file);
     const cur = canvasDimsRef.current;
-    const baseY = cur.height;
     const newW = Math.max(cur.width, data.width);
-    const newH = baseY + data.height;
+    const newH = Math.max(cur.height, data.height);
+    const offsetX = Math.floor((newW - data.width) / 2);
+    const offsetY = Math.floor((newH - data.height) / 2);
 
     const remapped: Layer[] = data.layers.map((l) => ({
       ...l,
       id: `layer-${crypto.randomUUID()}`,
-      y: l.y + baseY,
+      x: l.x + offsetX,
+      y: l.y + offsetY,
     }));
 
     canvasDimsRef.current = { width: newW, height: newH };
