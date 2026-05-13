@@ -849,8 +849,13 @@ const App: React.FC = () => {
     <div className="flex flex-col h-[100dvh] bg-slate-950 text-slate-200 font-sans selection:bg-blue-500 selection:text-white overflow-hidden">
       <header className="h-14 bg-slate-900 border-b border-slate-700 flex items-center justify-between px-4 shrink-0 z-20 relative">
         <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20 shrink-0">
-                <i className="fa-solid fa-layer-group"></i>
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/20 shrink-0">
+                <svg viewBox="0 0 24 24" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect x="3.5" y="13" width="14" height="6" rx="1.6" fill="white" opacity="0.45"/>
+                    <rect x="5.5" y="9" width="14" height="6" rx="1.6" fill="white" opacity="0.7"/>
+                    <rect x="7.5" y="5" width="14" height="6" rx="1.6" fill="white"/>
+                    <path d="M19.5 2 l0.6 1.4 L21.5 4 l-1.4 0.6 L19.5 6 l-0.6-1.4 L17.5 4 l1.4-0.6 Z" fill="white"/>
+                </svg>
             </div>
             <h1 className="text-lg font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 hidden sm:block uppercase tracking-tight">
                 {t(language, 'appTitle')} <span className="font-light opacity-50">{t(language, 'appSubtitle')}</span>
