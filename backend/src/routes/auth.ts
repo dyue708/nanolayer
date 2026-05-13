@@ -5,6 +5,7 @@ import {
   isFeishuTenantRestrictionEnabled,
   verifyFeishuUserAccessToken,
 } from '../services/feishuTenantService.js';
+import { dbService } from '../services/dbService.js';
 
 const router = express.Router();
 
@@ -47,13 +48,15 @@ router.post('/feishu/exchange', async (req, res) => {
       return res.status(502).json({ error: '飞书未返回 access_token' });
     }
 
-    await verifyFeishuUserAccessToken(accessToken);
+    const feishuUser = await verifyFeishuUserAccessToken(accessToken);
+    const dbUserId = await dbService.upsertUserFromFeishu(feishuUser);
 
     res.json({
       access_token: accessToken,
       expires_in: tokenPayload.expires_in,
       refresh_token: tokenPayload.refresh_token,
       refresh_expires_in: tokenPayload.refresh_expires_in,
+      db_user_id: dbUserId,
     });
   } catch (error: unknown) {
     console.error('feishu/exchange:', error);
@@ -85,8 +88,9 @@ router.get('/feishu/me', async (req, res) => {
         error: '缺少 Authorization: Bearer <飞书 user_access_token>',
       });
     }
-    const user = await verifyFeishuUserAccessToken(token);
-    res.json({ code: 0, data: user, msg: 'success' });
+    const feishuUser = await verifyFeishuUserAccessToken(token);
+    const dbUserId = await dbService.upsertUserFromFeishu(feishuUser);
+    res.json({ code: 0, data: { ...feishuUser, db_user_id: dbUserId }, msg: 'success' });
   } catch (error: unknown) {
     console.error('feishu/me:', error);
     if (error instanceof FeishuTenantDeniedError) {

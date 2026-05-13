@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import { dbService } from '../services/dbService.js';
 import {
   FeishuTenantDeniedError,
   isFeishuTenantRestrictionEnabled,
@@ -11,6 +12,8 @@ declare global {
     interface Request {
       /** 校验通过后的飞书用户信息（仅当启用 FEISHU_ALLOWED_TENANT_KEY 且请求合法时存在） */
       feishuUser?: FeishuAuthenUserInfo;
+      /** 与 feishuUser 对应的本地 users.id */
+      feishuDbUserId?: number;
     }
   }
 }
@@ -45,7 +48,9 @@ export const requireFeishuTenantWhenConfigured: RequestHandler = async (req, res
   }
 
   try {
-    req.feishuUser = await verifyFeishuUserAccessToken(token);
+    const feishuUser = await verifyFeishuUserAccessToken(token);
+    req.feishuUser = feishuUser;
+    req.feishuDbUserId = await dbService.upsertUserFromFeishu(feishuUser);
     next();
   } catch (e: unknown) {
     if (e instanceof FeishuTenantDeniedError) {

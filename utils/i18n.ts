@@ -89,6 +89,8 @@ export const translations = {
     noHistory: "No history yet",
     historyGeneratedBy: "By",
     historyModel: "Model",
+    historyOnlyMine: "My edits only",
+    historyShowAll: "Show all",
 
     feishuGateTitle: "Organization sign-in required",
     feishuGateSubtitle: "Sign in with Feishu. Only members of an allowed organization can use this app.",
@@ -188,6 +190,8 @@ export const translations = {
     noHistory: "暂无历史记录",
     historyGeneratedBy: "生成者",
     historyModel: "模型",
+    historyOnlyMine: "仅看我的",
+    historyShowAll: "显示全部",
 
     feishuGateTitle: "需要组织账号登录",
     feishuGateSubtitle: "请使用飞书登录，且仅限配置允许的租户（组织）成员访问本应用。",

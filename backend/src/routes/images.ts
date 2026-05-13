@@ -132,6 +132,19 @@ async function getImageDimensions(imageData: string): Promise<{ width: number; h
  * POST /api/images/generate
  * 生成或编辑图片
  */
+function resolveDbUserId(req: Request, clientUserId?: string): number | null {
+  if (typeof req.feishuDbUserId === 'number') {
+    return req.feishuDbUserId;
+  }
+  if (clientUserId) {
+    const parsed = parseInt(clientUserId, 10);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
 function feishuDisplayName(req: Request): string | undefined {
   const u = req.feishuUser;
   if (!u) return undefined;
@@ -144,6 +157,7 @@ router.post('/generate', async (req, res) => {
     const body: GenerateRequest = req.body;
     const { prompt, model, aiSource, imageBase64, selection, referenceImages, systemInstruction, aspectRatio, resolution, userId } = body;
     const generatedByDisplayName = feishuDisplayName(req);
+    const dbUserId = resolveDbUserId(req, userId);
 
     if (!prompt || !model) {
       return res.status(400).json({ error: 'prompt and model are required' });
@@ -248,7 +262,7 @@ router.post('/generate', async (req, res) => {
     // 上传到 OSS（如果配置了 OSS，否则使用 fal 返回的 URL）
     let uploadResult: { imageUrl: string; thumbnailUrl: string };
     try {
-      uploadResult = await uploadImage(imageData, userId ? parseInt(userId) : undefined);
+      uploadResult = await uploadImage(imageData, dbUserId ?? undefined);
     } catch (error: any) {
       // 如果 OSS 未配置，直接使用 fal 返回的 URL
       console.warn('OSS upload failed, using fal URL:', error.message);
@@ -269,7 +283,7 @@ router.post('/generate', async (req, res) => {
 
     // 保存到数据库
     const imageId = await dbService.createImageHistory({
-      user_id: userId ? parseInt(userId) : null,
+      user_id: dbUserId,
       prompt,
       model: actualModel,
       image_url: uploadResult.imageUrl,
@@ -325,9 +339,19 @@ router.post('/generate', async (req, res) => {
  */
 router.get('/history', async (req, res) => {
   try {
-    const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
     const page = req.query.page ? parseInt(req.query.page as string) : 1;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+    const onlyMine = req.query.onlyMine === '1' || req.query.onlyMine === 'true';
+
+    let userId: number | undefined;
+    if (onlyMine) {
+      userId = typeof req.feishuDbUserId === 'number' ? req.feishuDbUserId : undefined;
+    } else if (req.query.userId) {
+      const parsed = parseInt(req.query.userId as string, 10);
+      if (!Number.isNaN(parsed)) {
+        userId = parsed;
+      }
+    }
 
     const result = await dbService.getImageHistory(userId, page, limit);
 

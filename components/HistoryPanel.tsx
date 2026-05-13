@@ -59,18 +59,19 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [onlyMine, setOnlyMine] = useState(false);
   const limit = 20;
 
   useEffect(() => {
     if (isOpen) {
       loadHistory();
     }
-  }, [isOpen, page]);
+  }, [isOpen, page, onlyMine]);
 
   const loadHistory = async () => {
     setLoading(true);
     try {
-      const result = await getImageHistory(undefined, page, limit);
+      const result = await getImageHistory(page, limit, { onlyMine });
       setImages(result.images);
       setTotal(result.total);
     } catch (error) {
@@ -86,13 +87,31 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   return (
     <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-slate-800 flex justify-between items-center shrink-0">
+        <div className="p-5 border-b border-slate-800 flex justify-between items-center gap-3 shrink-0">
           <h2 className="font-black text-white uppercase tracking-widest text-sm">
             {t(lang, 'history') || 'History'}
           </h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-white">
-            <i className="fa-solid fa-xmark"></i>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setOnlyMine((value) => !value);
+                setPage(1);
+              }}
+              className={`px-3 py-1.5 rounded text-xs font-bold border transition-colors ${
+                onlyMine
+                  ? 'bg-blue-600 border-blue-500 text-white hover:bg-blue-500'
+                  : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+              aria-pressed={onlyMine}
+            >
+              <i className={`fa-solid ${onlyMine ? 'fa-user-check' : 'fa-users'} mr-1.5`}></i>
+              {onlyMine ? t(lang, 'historyShowAll') : t(lang, 'historyOnlyMine')}
+            </button>
+            <button onClick={onClose} className="text-slate-500 hover:text-white">
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">

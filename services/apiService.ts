@@ -212,12 +212,12 @@ export async function analyzeImage(params: AnalyzeImageRequest): Promise<Analyze
  * 获取历史图片列表
  */
 export async function getImageHistory(
-  userId?: number,
   page: number = 1,
-  limit: number = 20
+  limit: number = 20,
+  options?: { onlyMine?: boolean }
 ): Promise<ImageHistoryResponse> {
   const params = new URLSearchParams();
-  if (userId) params.append('userId', userId.toString());
+  if (options?.onlyMine) params.append('onlyMine', '1');
   params.append('page', page.toString());
   params.append('limit', limit.toString());
 
