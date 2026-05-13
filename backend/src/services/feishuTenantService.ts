@@ -25,6 +25,18 @@ export class FeishuTenantDeniedError extends Error {
   }
 }
 
+export function isExpectedFeishuAccessTokenFailure(error: unknown): boolean {
+  const msg = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return (
+    msg.includes('invalid access token') ||
+    msg.includes('access token invalid') ||
+    msg.includes('token invalid') ||
+    msg.includes('token expired') ||
+    msg.includes('token 无效') ||
+    msg.includes('token 过期')
+  );
+}
+
 let cachedClient: Client | null = null;
 
 function getFeishuClient(): Client {

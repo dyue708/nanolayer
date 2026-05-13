@@ -2,6 +2,7 @@ import type { RequestHandler } from 'express';
 import { dbService } from '../services/dbService.js';
 import {
   FeishuTenantDeniedError,
+  isExpectedFeishuAccessTokenFailure,
   isFeishuTenantRestrictionEnabled,
   verifyFeishuUserAccessToken,
   type FeishuAuthenUserInfo,
@@ -58,7 +59,9 @@ export const requireFeishuTenantWhenConfigured: RequestHandler = async (req, res
       return;
     }
     const msg = e instanceof Error ? e.message : String(e);
-    console.error('Feishu tenant auth failed:', e);
+    if (!isExpectedFeishuAccessTokenFailure(e)) {
+      console.error('Feishu tenant auth failed:', e);
+    }
     res.status(401).json({ error: msg.includes('配置') ? msg : '飞书 token 无效或已过期' });
   }
 };

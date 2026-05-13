@@ -87,6 +87,21 @@ export function clearFeishuAccessToken() {
   localStorage.removeItem(FEISHU_TOKEN_STORAGE_KEY);
 }
 
+let feishuSessionReloading = false;
+
+function hasStoredFeishuAccessToken(): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  return Boolean(localStorage.getItem(FEISHU_TOKEN_STORAGE_KEY));
+}
+
+/** 飞书 user_access_token 失效时清本地凭证并整页刷新，由登录门重新拉起授权。 */
+export function forceFeishuReLogin(): void {
+  if (feishuSessionReloading || typeof window === 'undefined') return;
+  feishuSessionReloading = true;
+  clearFeishuAccessToken();
+  window.location.reload();
+}
+
 export async function getFeishuAuthStatus(): Promise<{
   authRequired: boolean;
   appId?: string;
@@ -182,7 +197,16 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    const message = error.error || `HTTP error! status: ${response.status}`;
+    if (
+      response.status === 401 &&
+      hasStoredFeishuAccessToken() &&
+      !endpoint.startsWith('/auth/feishu/exchange')
+    ) {
+      forceFeishuReLogin();
+      return await new Promise<T>(() => {});
+    }
+    throw new Error(message);
   }
 
   return response.json();

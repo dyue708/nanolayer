@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  clearFeishuAccessToken,
   exchangeFeishuOAuthCode,
   FEISHU_TOKEN_STORAGE_KEY,
   getFeishuAuthStatus,
@@ -165,7 +166,7 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
       try {
         await getFeishuMe(15000);
       } catch (e: unknown) {
-        localStorage.removeItem(FEISHU_TOKEN_STORAGE_KEY);
+        clearFeishuAccessToken();
         const msg = e instanceof Error ? e.message : null;
         enterLoginPhase(aid, msg);
         return;

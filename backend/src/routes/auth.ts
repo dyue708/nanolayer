@@ -2,6 +2,7 @@ import express from 'express';
 import {
   FeishuTenantDeniedError,
   exchangeAuthorizationCodeForUserAccessToken,
+  isExpectedFeishuAccessTokenFailure,
   isFeishuTenantRestrictionEnabled,
   verifyFeishuUserAccessToken,
 } from '../services/feishuTenantService.js';
@@ -92,13 +93,17 @@ router.get('/feishu/me', async (req, res) => {
     const dbUserId = await dbService.upsertUserFromFeishu(feishuUser);
     res.json({ code: 0, data: { ...feishuUser, db_user_id: dbUserId }, msg: 'success' });
   } catch (error: unknown) {
-    console.error('feishu/me:', error);
+    if (!isExpectedFeishuAccessTokenFailure(error)) {
+      console.error('feishu/me:', error);
+    }
     if (error instanceof FeishuTenantDeniedError) {
       res.status(403).json({ error: error.message });
       return;
     }
     const msg = error instanceof Error ? error.message : '校验失败';
-    res.status(401).json({ error: msg });
+    res.status(401).json({
+      error: isExpectedFeishuAccessTokenFailure(error) ? '飞书 token 无效或已过期' : msg,
+    });
   }
 });
 
