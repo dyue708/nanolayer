@@ -33,15 +33,17 @@
 
 ### 情况 B：新增同时支持 fal + Vertex 的模型
 
-在情况 A 的基础上，还需额外修改：
+在情况 A 的基础上，还需额外修改（**详细步骤与定价获取见 [新增 Vertex 类型模型（完整流程）](#新增-vertex-类型模型完整流程)**）：
 
 | 文件 | 改动内容 |
 |------|---------|
-| `backend/src/services/vertexService.ts` | 在 `FAL_TO_VERTEX_MODEL` 映射表中加入新模型 |
-| `backend/src/services/costService.ts` | 同时注册 `vertex/<model-name>` 和 `vertex/<model-name>/edit` 的成本 |
-| `backend/src/routes/images.ts` | 若不是 nano-banana 系列，需更新 `isVertexSupportedModel` 检查（实际由 `vertexService.ts` 的映射表控制） |
+| `backend/src/services/vertexService.ts` | 在 `getFalToVertexModel()` 映射表中加入新模型 + `VertexSupportedFalModel` 类型 |
+| `backend/src/services/costService.ts` | 注册 `vertex/<model-name>` 和 `vertex/<model-name>/edit` 成本（单价来自官方定价页） |
+| `backend/.env` + `.env.example` | `VERTEX_MODEL_*`、`COST_VERTEX_*` |
 | `types.ts` | 在 `VERTEX_SUPPORTED_MODELS` 数组中加入新模型 ID |
 | `components/ConfigPanel.tsx` | 新模型按钮无需额外处理，Vertex 可用性由 `VERTEX_SUPPORTED_MODELS` 自动控制 |
+
+> `images.ts` 通过 `isVertexSupportedModel()` 判断是否可走 Vertex，映射表在 `vertexService.ts` 维护，一般**无需**改路由文件。
 
 ---
 
@@ -162,15 +164,17 @@ model: model as
 
 ### Step 5 · `backend/src/services/vertexService.ts`（仅限支持 Vertex 的模型）
 
-在 `FAL_TO_VERTEX_MODEL` 映射表中添加：
+在 `getFalToVertexModel()` 映射表中添加：
 
 ```ts
-const FAL_TO_VERTEX_MODEL: Record<string, string> = {
-  'fal-ai/nano-banana':     process.env.VERTEX_MODEL_NANO_BANANA     || 'gemini-2.0-flash-preview-image-generation',
-  'fal-ai/nano-banana-pro': process.env.VERTEX_MODEL_NANO_BANANA_PRO || 'gemini-2.0-flash-preview-image-generation',
-  'fal-ai/nano-banana-2':   process.env.VERTEX_MODEL_NANO_BANANA_2   || 'gemini-2.0-flash-preview-image-generation',
-  'fal-ai/YOUR-NEW-MODEL':  process.env.VERTEX_MODEL_YOUR_NEW_MODEL  || 'your-vertex-model-id',  // ← 新增
-};
+function getFalToVertexModel(): Record<string, string> {
+  return {
+    'fal-ai/nano-banana':     process.env.VERTEX_MODEL_NANO_BANANA     || 'gemini-2.5-flash-image',
+    'fal-ai/nano-banana-pro': process.env.VERTEX_MODEL_NANO_BANANA_PRO || 'gemini-3-pro-image-preview',
+    'fal-ai/nano-banana-2':   process.env.VERTEX_MODEL_NANO_BANANA_2   || 'gemini-3.1-flash-image-preview',
+    'fal-ai/YOUR-NEW-MODEL':  process.env.VERTEX_MODEL_YOUR_NEW_MODEL  || 'your-vertex-model-id',  // ← 新增
+  };
+}
 ```
 
 同时更新 `VertexSupportedFalModel` 联合类型：
@@ -196,14 +200,15 @@ this.costs.set('fal-ai/YOUR-NEW-MODEL', parseFloat(process.env.COST_YOUR_NEW_MOD
 this.costs.set('fal-ai/YOUR-NEW-MODEL/edit', parseFloat(process.env.COST_YOUR_NEW_MODEL_EDIT || '0.05'));
 ```
 
-若同时支持 Vertex，额外注册 vertex 键：
+若同时支持 Vertex，额外注册 vertex 键（单价见下方「Vertex 定价获取」）：
 
 ```ts
-this.costs.set('vertex/YOUR-NEW-MODEL', parseFloat(process.env.COST_VERTEX_YOUR_NEW_MODEL || '0.03'));
-this.costs.set('vertex/YOUR-NEW-MODEL/edit', parseFloat(process.env.COST_VERTEX_YOUR_NEW_MODEL_EDIT || '0.03'));
+// short-name = YOUR-NEW-MODEL 去掉 fal-ai/ 前缀，如 nano-banana-3
+this.costs.set('vertex/YOUR-NEW-MODEL', parseFloat(process.env.COST_VERTEX_YOUR_NEW_MODEL || '0.04'));
+this.costs.set('vertex/YOUR-NEW-MODEL/edit', parseFloat(process.env.COST_VERTEX_YOUR_NEW_MODEL_EDIT || '0.04'));
 ```
 
-完成，`calculateCost` 里的兜底逻辑会自动命中，无需额外分支。
+完成，`calculateCost` 里的兜底逻辑会自动命中，无需额外分支（按分辨率分档的 Vertex 模型需另加分支，见下文「新增 Vertex 类型模型」）。
 
 ---
 
@@ -263,9 +268,10 @@ if (model === 'fal-ai/YOUR-NEW-MODEL' || model === 'fal-ai/YOUR-NEW-MODEL/edit')
 ```env
 COST_YOUR_NEW_MODEL=0.05
 COST_YOUR_NEW_MODEL_EDIT=0.05
-# 若支持 Vertex：
-COST_VERTEX_YOUR_NEW_MODEL=0.03
-COST_VERTEX_YOUR_NEW_MODEL_EDIT=0.03
+# 若支持 Vertex（单价从官方定价页获取，见「Vertex 定价获取」）：
+VERTEX_MODEL_YOUR_NEW_MODEL=gemini-xxx-image-preview
+COST_VERTEX_YOUR_NEW_MODEL=0.04
+COST_VERTEX_YOUR_NEW_MODEL_EDIT=0.04
 ```
 
 ---
@@ -335,9 +341,99 @@ COST_VERTEX_YOUR_NEW_MODEL_EDIT=0.03
 ### 额外：同时支持 Vertex AI
 
 - [ ] `types.ts` — 新模型 ID 加入 `VERTEX_SUPPORTED_MODELS` 数组
-- [ ] `backend/src/services/vertexService.ts` — `FAL_TO_VERTEX_MODEL` 映射 + `VertexSupportedFalModel` 类型（2 处）
-- [ ] `backend/src/services/costService.ts` — 注册 `vertex/<name>` 和 `vertex/<name>/edit` 成本
-- [ ] `backend/.env` — 按需添加 `COST_VERTEX_*` 和 `VERTEX_MODEL_*` 环境变量
+- [ ] `backend/src/services/vertexService.ts` — `getFalToVertexModel()` 映射 + `VertexSupportedFalModel` 类型（2 处）
+- [ ] `backend/src/services/costService.ts` — 注册 `vertex/<name>` 和 `vertex/<name>/edit` 成本（单价来自官方定价页）
+- [ ] `backend/.env` + `backend/.env.example` — 添加 `VERTEX_MODEL_*`、`COST_VERTEX_*`（附定价来源注释）
+- [ ] 确认 `VERTEX_MODEL_*` 与 `COST_VERTEX_*` 对应同一档 Gemini 模型（见下方流程）
+
+---
+
+## 新增 Vertex 类型模型（完整流程）
+
+> 适用于：新产品档位需要同时走 **fal.ai** 与 **Vertex AI**，且历史记录里用 `vertex/<short-name>` 区分来源与成本。  
+> GPT Image 等仅 fal 的模型**不要**走本流程。
+
+### 1. 选定 Vertex 侧的 Gemini 模型 ID
+
+1. 打开 [Google Gemini 定价页（Gemini 3 章节）](https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing#gemini-models-3)。
+2. 在 **Gemini 3** / **Gemini 2.5** / **Gemini 2.0** 表格中找到带 **Image Output** 或 **Output image** 行的图像模型。
+3. 在 [Vertex AI 模型文档](https://cloud.google.com/vertex-ai/generative-ai/docs/models) 确认该模型在目标区域（默认 `us-east5`）可用，记下 API 模型 ID（如 `gemini-2.0-flash-preview-image-generation`）。
+4. 将 fal 产品 ID（`fal-ai/nano-banana-xxx`）与该 Vertex 模型 ID 一一对应；**成本档位必须与 `VERTEX_MODEL_*` 一致**，否则统计成本会与 GCP 账单不符。
+
+### 2. 从定价页读取「每张输出图」单价
+
+定价页以 **$/1M tokens** 为主，图像模型在表格脚注中给出**按分辨率折算的单张输出图价格**，本项目 `COST_VERTEX_*` 填的就是**每张输出图（美元）**。
+
+| 查阅位置 | 说明 |
+|---------|------|
+| **Gemini 3** 表格脚注 `**` / `***` | 如 Gemini 3 Pro Image、Gemini 3.1 Flash Image 的分辨率单价 |
+| **Gemini 2.0** → Modality-based pricing | `Gemini 2.0 Flash Image Generation` → **Output image ($/image)** |
+| **Gemini 2.5 Flash Image** 脚注 | 如 1024×1024 约 **$0.039/张**（token 折算） |
+
+**当前项目档位与定价对照（Standard，供参考；以定价页最新值为准）：**
+
+| fal 产品 ID | 建议 Vertex 模型 | 1K 输出图单价 | 定价页依据 |
+|-------------|-----------------|--------------|-----------|
+| `fal-ai/nano-banana` | Gemini 2.5 Flash Image | **$0.039** | 2.5 脚注：1024 输出约 $0.039/张 |
+| `fal-ai/nano-banana-pro` | Gemini 3 Pro Image Preview | **$0.134** | 脚注 `**`：1K/2K 输出 |
+| `fal-ai/nano-banana-2` | Gemini 3.1 Flash Image Preview | **$0.067** | 脚注 `***`：1K 输出（2K $0.101，4K $0.15） |
+
+编辑模式与生成模式共用同一输出图单价，`COST_VERTEX_*` 与 `COST_VERTEX_*_EDIT` 填相同数值即可。
+
+### 3. 改代码（按顺序）
+
+| 步骤 | 文件 | 操作 |
+|------|------|------|
+| ① | 先完成上文 **情况 A** 全部步骤 | fal 类型、路由、UI 等 |
+| ② | `types.ts` | `VERTEX_SUPPORTED_MODELS` 加入 `'fal-ai/YOUR-NEW-MODEL'` |
+| ③ | `backend/src/services/vertexService.ts` | `getFalToVertexModel()` 增加映射；`VertexSupportedFalModel` 联合类型增加一项 |
+| ④ | `backend/src/services/costService.ts` | `loadCosts()` 注册 `vertex/<short-name>`、`vertex/<short-name>/edit` |
+| ⑤ | `backend/.env` + `.env.example` | `VERTEX_MODEL_*`、`COST_VERTEX_*`（注释写明定价来源 URL） |
+
+**`vertexService.ts` 环境变量命名约定：**
+
+- fal ID `fal-ai/nano-banana-3` → `VERTEX_MODEL_NANO_BANANA_3`（大写 + 下划线）
+- 默认值写 Step 1 选定的 Gemini 模型 ID
+
+**`costService.ts` 成本键名（由 `images.ts` 自动拼接，勿改规则）：**
+
+- 生成：`vertex/<short-name>`（`short-name` = 去掉 `fal-ai/` 前缀）
+- 编辑：`vertex/<short-name>/edit`
+
+**若新模型按 0.5K/1K/2K/4K 分档计费**（类似 nano-banana-2 的 fal 逻辑）：
+
+1. 在定价页脚注查出各档位单价；
+2. 在 `calculateCost()` 中为 `vertex/YOUR-NEW-MODEL` 增加与 fal 类似的分支（当前仅 fal 的 `nano-banana-2` 有倍率，Vertex 路径需单独实现）。
+
+### 4. 配置环境变量示例
+
+```env
+# Vertex 模型映射
+VERTEX_MODEL_YOUR_NEW_MODEL=gemini-3.1-flash-image-preview   # 与定价档一致
+
+# Vertex 源成本（每张输出图，美元）
+# 定价来源：https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing#gemini-models-3
+COST_VERTEX_YOUR_NEW_MODEL=0.067
+COST_VERTEX_YOUR_NEW_MODEL_EDIT=0.067
+```
+
+`costService.ts` 中的 `parseFloat(process.env.COST_VERTEX_... || '默认值')` 应与 `.env.example` 保持一致，便于未配置 env 时仍有合理默认。
+
+### 5. 验证
+
+- [ ] 前端切到 **Vertex AI** 源，新模型按钮可点（由 `VERTEX_SUPPORTED_MODELS` 控制）
+- [ ] 文生图 / 编辑各请求一次，历史记录 `model` 为 `vertex/<short-name>` 或 `vertex/<short-name>/edit`
+- [ ] 返回的 `cost` 与配置的 `COST_VERTEX_*` 一致
+- [ ] GCP 控制台账单与所选 Gemini 模型、定价档一致
+
+### Vertex 定价获取（速查）
+
+1. 打开：<https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing#gemini-models-3>
+2. 找到目标 **Image** 模型行 → 看 **Image Output** 列与表格下方脚注 `**` / `***`
+3. 取业务默认分辨率（通常 **1K**）对应的 **$/张** 填入 `COST_VERTEX_*`
+4. 同步更新 `costService.ts` 默认值与 `.env.example` 注释
+
+> 定价会随 Google 调整而变化，以定价页实时内容为准，勿依赖本文档中的具体数字。
 
 ---
 
@@ -364,7 +460,7 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
 **`模型 X 不支持 Vertex AI 调用`**
 
-原因：前端传入了 `aiSource: 'vertex'` 但模型不在 `FAL_TO_VERTEX_MODEL` 映射表中。
+原因：前端传入了 `aiSource: 'vertex'` 但模型不在 `getFalToVertexModel()` 映射表中。
 - 若要支持该模型的 Vertex 调用，按「额外：同时支持 Vertex AI」Checklist 操作。
 - 若该模型不支持 Vertex，前端 `ConfigPanel.tsx` 应将其按钮设为 `disabled={aiSource === 'vertex'}`。
 

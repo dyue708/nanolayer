@@ -11,9 +11,9 @@ const BACKEND_ROOT = path.resolve(__dirname, '../../');
 // 可通过环境变量覆盖，未来新增 Vertex 模型只需在此扩展
 function getFalToVertexModel(): Record<string, string> {
   return {
-    'fal-ai/nano-banana':     process.env.VERTEX_MODEL_NANO_BANANA     || 'gemini-2.0-flash-preview-image-generation',
-    'fal-ai/nano-banana-pro': process.env.VERTEX_MODEL_NANO_BANANA_PRO || 'gemini-2.0-flash-preview-image-generation',
-    'fal-ai/nano-banana-2':   process.env.VERTEX_MODEL_NANO_BANANA_2   || 'gemini-2.0-flash-preview-image-generation',
+    'fal-ai/nano-banana':     process.env.VERTEX_MODEL_NANO_BANANA     || 'gemini-2.5-flash-image',
+    'fal-ai/nano-banana-pro': process.env.VERTEX_MODEL_NANO_BANANA_PRO || 'gemini-3-pro-image-preview',
+    'fal-ai/nano-banana-2':   process.env.VERTEX_MODEL_NANO_BANANA_2   || 'gemini-3.1-flash-image-preview',
   };
 }
 
