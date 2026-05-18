@@ -24,13 +24,14 @@ export class CostService {
 
     // ── Vertex AI 源（nano-banana 系列通过 Vertex 调用时的成本）─────────────
     // Vertex 调用走 Google 官方计费，成本与 fal 代理价格不同
-    // 可通过 COST_VERTEX_* 环境变量覆盖；默认值参考 Gemini Image Generation 官方定价
-    this.costs.set('vertex/nano-banana', parseFloat(process.env.COST_VERTEX_NANO_BANANA || '0.03'));
-    this.costs.set('vertex/nano-banana/edit', parseFloat(process.env.COST_VERTEX_NANO_BANANA_EDIT || '0.03'));
-    this.costs.set('vertex/nano-banana-pro', parseFloat(process.env.COST_VERTEX_NANO_BANANA_PRO || '0.05'));
-    this.costs.set('vertex/nano-banana-pro/edit', parseFloat(process.env.COST_VERTEX_NANO_BANANA_PRO_EDIT || '0.05'));
-    this.costs.set('vertex/nano-banana-2', parseFloat(process.env.COST_VERTEX_NANO_BANANA_2 || '0.04'));
-    this.costs.set('vertex/nano-banana-2/edit', parseFloat(process.env.COST_VERTEX_NANO_BANANA_2_EDIT || '0.04'));
+    // 可通过 COST_VERTEX_* 环境变量覆盖；默认值参考 Vertex AI Gemini 图像定价
+    // https://cloud.google.com/vertex-ai/generative-ai/pricing#gemini-models-3
+    this.costs.set('vertex/nano-banana', parseFloat(process.env.COST_VERTEX_NANO_BANANA || '0.04'));
+    this.costs.set('vertex/nano-banana/edit', parseFloat(process.env.COST_VERTEX_NANO_BANANA_EDIT || '0.04'));
+    this.costs.set('vertex/nano-banana-pro', parseFloat(process.env.COST_VERTEX_NANO_BANANA_PRO || '0.134'));
+    this.costs.set('vertex/nano-banana-pro/edit', parseFloat(process.env.COST_VERTEX_NANO_BANANA_PRO_EDIT || '0.134'));
+    this.costs.set('vertex/nano-banana-2', parseFloat(process.env.COST_VERTEX_NANO_BANANA_2 || '0.067'));
+    this.costs.set('vertex/nano-banana-2/edit', parseFloat(process.env.COST_VERTEX_NANO_BANANA_2_EDIT || '0.067'));
   }
 
   /**
