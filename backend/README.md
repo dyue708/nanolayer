@@ -1,6 +1,6 @@
 # Nanolayer Backend
 
-后端 API 服务，提供图片生成、编辑和历史查询功能。
+后端 API 服务：图片生成与编辑、历史记录、成本统计；支持 **fal.ai** 与 **Google Vertex AI** 双调用源；可选飞书租户登录与阿里云 OSS 存储。
 
 ## 环境要求
 
@@ -12,121 +12,238 @@
 ```bash
 cd backend
 npm install
+cp .env.example .env
+# 编辑 .env，至少配置 FAL_KEY；使用 Vertex / OSS / 飞书时见下方说明
 ```
+
+## 架构概览
+
+| 模块 | 说明 |
+|------|------|
+| `falService` | 通过 `@fal-ai/client` 调用 fal.ai（全部图像模型） |
+| `vertexService` | 通过 `@google/genai` 直连 Vertex AI（仅 Nano Banana 系列） |
+| `costService` | 按模型与分辨率计算单次调用成本（美元） |
+| `ossService` | 可选：生成结果上传阿里云 OSS |
+| `dbService` | SQLite / PostgreSQL 历史与用户 |
+| `feishuTenantService` | 可选：飞书 OAuth 与租户校验 |
+
+**AI 调用源**（请求体 `aiSource`）：
+
+| 源 | 值 | 适用模型 |
+|----|-----|----------|
+| fal.ai | `fal`（默认） | 全部：`nano-banana`、`nano-banana-pro`、`nano-banana-2`、`gpt-image-1.5`、`gpt-image-2` |
+| Vertex AI | `vertex` | 仅 Nano Banana 三档；历史记录中 `model` 为 `vertex/<name>` |
+
+新增模型步骤见仓库根目录 [`docs/ADD_MODEL.md`](../docs/ADD_MODEL.md)。
 
 ## 配置
 
-1. 复制 `.env.example` 为 `.env`
-2. 填写必要的环境变量
+完整变量见 [`.env.example`](./.env.example)。按功能分组如下。
 
-### 数据库配置
+### 服务器
+
+```bash
+PORT=3000
+FRONTEND_URL=http://localhost:5173   # CORS 来源
+# LOG_DIR=./logs                     # 可选，应用日志目录
+```
+
+### 数据库
 
 #### SQLite（默认）
 
-默认使用 SQLite 数据库，无需额外配置。数据库文件会自动创建在 `data/nanolayer.db`。
+无需额外配置，数据库文件自动创建在 `data/nanolayer.db`。
 
 #### PostgreSQL
 
-如果需要使用 PostgreSQL，请设置以下环境变量：
-
 ```bash
-# 数据库类型
 DB_TYPE=postgres
-
-# PostgreSQL 连接配置
-DB_HOST=localhost          # 数据库主机地址
-DB_PORT=5432               # 数据库端口（默认 5432）
-DB_NAME=nanolayer          # 数据库名称
-DB_USER=postgres           # 数据库用户名
-DB_PASSWORD=your_password  # 数据库密码
-DB_SSL=false               # 是否使用 SSL（生产环境建议设为 true）
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=nanolayer
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_SSL=false
+# DB_FORCE_IPV4=true                # 部分云数据库需要
 ```
 
-**PostgreSQL 安装和设置：**
-
-1. 安装 PostgreSQL（如果尚未安装）：
-   ```bash
-   # Ubuntu/Debian
-   sudo apt-get install postgresql postgresql-contrib
-   
-   # macOS (使用 Homebrew)
-   brew install postgresql
-   brew services start postgresql
-   
-   # Windows
-   # 从 https://www.postgresql.org/download/windows/ 下载安装
-   ```
-
-2. 创建数据库和用户：
-   ```bash
-   # 登录 PostgreSQL
-   sudo -u postgres psql
-   
-   # 创建数据库
-   CREATE DATABASE nanolayer;
-   
-   # 创建用户（可选）
-   CREATE USER nanolayer_user WITH PASSWORD 'your_password';
-   GRANT ALL PRIVILEGES ON DATABASE nanolayer TO nanolayer_user;
-   
-   # 退出
-   \q
-   ```
-
-3. 在 `.env` 文件中配置连接信息
-
-### 其他配置
+SQLite → PostgreSQL 迁移：
 
 ```bash
-# Fal AI 平台 API Key
-FAL_KEY=your_fal_api_key
+npm run migrate:sqlite-to-postgres
+```
 
-# 阿里云 OSS 配置
-OSS_ACCESS_KEY_ID=your_oss_key
-OSS_ACCESS_KEY_SECRET=your_oss_secret
+### Fal AI（必填，除非仅使用 Vertex）
+
+```bash
+FAL_KEY=your_fal_api_key
+```
+
+### Google Vertex AI（可选）
+
+启用 `aiSource: 'vertex'` 时需配置：
+
+```bash
+VERTEX_AI_PROJECT=your-gcp-project-id
+VERTEX_AI_LOCATION=us-east5          # 或 global 等支持图像生成的区域
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+# 或使用 VERTEX_KEY_PATH（相对 backend 根目录的路径亦可）
+```
+
+服务账号需 **Vertex AI User** 角色。
+
+**默认模型映射**（可用环境变量覆盖）：
+
+| 产品档位 | 环境变量 | 默认 Vertex 模型 ID |
+|----------|----------|---------------------|
+| nano-banana | `VERTEX_MODEL_NANO_BANANA` | `gemini-2.5-flash-image` |
+| nano-banana-pro | `VERTEX_MODEL_NANO_BANANA_PRO` | `gemini-3-pro-image-preview` |
+| nano-banana-2 | `VERTEX_MODEL_NANO_BANANA_2` | `gemini-3.1-flash-image-preview` |
+
+### 阿里云 OSS（可选）
+
+未配置或上传失败时，接口仍返回 fal/Vertex 原始 URL 或 base64。
+
+```bash
+OSS_ACCESS_KEY_ID=...
+OSS_ACCESS_KEY_SECRET=...
 OSS_REGION=oss-cn-hangzhou
 OSS_BUCKET=your_bucket_name
+```
 
-# 成本配置（每张图片的成本，单位：美元）
+### 成本配置（美元 / 张）
+
+用于历史记录中的 `cost` 字段，便于内部统计；与 fal/Vertex 官方账单近似，可按 [Gemini 定价](https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing#gemini-models-3) 调整。
+
+```bash
+# fal 源
 COST_NANO_BANANA=0.0396
 COST_NANO_BANANA_PRO=0.134
 COST_NANO_BANANA_EDIT=0.0396
 COST_NANO_BANANA_PRO_EDIT=0.134
+# nano-banana-2 另有分辨率倍率，见 costService.ts
 
-# 服务器端口
-PORT=3000
-
-# 前端 URL（用于 CORS 配置）
-FRONTEND_URL=http://localhost:5173
+# Vertex 源（需与 VERTEX_MODEL_* 档位一致）
+COST_VERTEX_NANO_BANANA=0.039
+COST_VERTEX_NANO_BANANA_EDIT=0.039
+COST_VERTEX_NANO_BANANA_PRO=0.134
+COST_VERTEX_NANO_BANANA_PRO_EDIT=0.134
+COST_VERTEX_NANO_BANANA_2=0.067
+COST_VERTEX_NANO_BANANA_2_EDIT=0.067
 ```
+
+### 飞书认证（可选）
+
+配置 `FEISHU_ALLOWED_TENANT_KEY` 后，`/api/images`（除 `/proxy`）、`/api/analysis` 需携带 `Authorization: Bearer <user_access_token>`。
+
+```bash
+FEISHU_APP_ID=...
+FEISHU_APP_SECRET=...
+FEISHU_ALLOWED_TENANT_KEY=your_tenant_key    # 多个租户英文逗号分隔
+JWT_SECRET=...                               # 按需
+# FEISHU_REDIRECT_URI=http://localhost:5173/
+```
+
+前端需在仓库根目录 `.env` 配置 `VITE_FEISHU_REDIRECT_URI`，与飞书开放平台回调一致。
 
 ## 运行
 
-开发模式：
+**开发：**
+
 ```bash
 npm run dev
 ```
 
-生产模式：
+**生产：**
+
 ```bash
 npm run build
 npm start
 ```
 
+**PM2（集群）：**
+
+```bash
+npm run build
+pm2 start ecosystem.config.js
+```
+
+默认监听 `http://localhost:3000`（或 `PORT`）。
+
 ## API 端点
 
-- `POST /api/images/generate` - 生成或编辑图片
-- `GET /api/images/history` - 获取历史图片列表
-- `GET /api/images/:id` - 获取图片详情
-- `POST /api/analysis/analyze` - 分析图片（预留）
-- `GET /api/health` - 健康检查
+### 健康检查
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/health` | 服务状态 |
+
+### 认证（飞书，可选）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/auth/feishu/status` | 是否强制登录、`appId` |
+| POST | `/api/auth/feishu/exchange` | OAuth `code` 换 `user_access_token` |
+| GET | `/api/auth/feishu/me` | 校验 Bearer token，返回用户信息 |
+
+### 图片
+
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| GET | `/api/images/proxy?url=` | 否 | 代理 OSS/外链图片（供 `<img>` 使用） |
+| POST | `/api/images/generate` | 按需 | 文生图或编辑 |
+| GET | `/api/images/history` | 按需 | 分页历史；`onlyMine=1` 仅当前用户 |
+| GET | `/api/images/:id` | 按需 | 单条详情 |
+
+**`POST /api/images/generate` 主要字段：**
+
+```json
+{
+  "prompt": "描述",
+  "model": "fal-ai/nano-banana",
+  "aiSource": "fal",
+  "imageBase64": "data:image/png;base64,...",
+  "aspectRatio": "1:1",
+  "resolution": "1K",
+  "systemInstruction": "可选"
+}
+```
+
+- 带 `imageBase64` 时为编辑模式；历史 `model` 会带 `/edit` 后缀。
+- `aiSource: "vertex"` 时仅 `nano-banana` / `nano-banana-pro` / `nano-banana-2` 有效。
+- 响应含 `imageUrl`（代理 URL）、`cost`、`imageId`、`width` / `height` 等。
+
+### 分析（预留）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/analysis/analyze` | 图片分析（按需实现） |
+
+## 目录结构
+
+```
+backend/
+├── src/
+│   ├── app.ts                 # Express 入口
+│   ├── routes/                # images、auth、analysis
+│   ├── services/              # fal、vertex、oss、db、cost、feishu
+│   ├── middleware/            # 飞书租户校验
+│   └── config/                # 数据库连接
+├── data/                      # SQLite 数据（默认）
+├── logs/                      # 运行日志（app.log、error.log）
+├── scripts/                   # 数据迁移等
+├── .env.example
+└── ecosystem.config.js        # PM2 配置
+```
 
 ## 数据库
 
-支持两种数据库类型：
+- **SQLite**（默认）：`data/nanolayer.db`
+- **PostgreSQL**：`DB_TYPE=postgres`
 
-- **SQLite**（默认）：无需额外配置，数据库文件存储在 `data/nanolayer.db`
-- **PostgreSQL**：通过设置 `DB_TYPE=postgres` 和相关环境变量来使用
+两种库表结构一致，通过 `DB_TYPE` 切换。历史表会记录 `model`（含 `fal-ai/...` 或 `vertex/...` 前缀）、`cost`、尺寸与元数据。
 
-数据库类型通过 `DB_TYPE` 环境变量选择，默认为 `sqlite`。两种数据库使用相同的表结构，可以无缝切换。
+## 相关文档
 
+- [新增模型操作说明](../docs/ADD_MODEL.md)（含 Vertex 定价与映射流程）
+- [用户使用指南](../USER_GUIDE.md)（前端与 Vertex 源切换）

@@ -1,141 +1,103 @@
 # Nanolayer Studio
 
-> 基于 AI 的图片生成和编辑工具，支持文本生成图片和图片编辑功能。
+前后端分离的 AI 图片生成与编辑工具：文生图、图生图、局部选区编辑、多图层画布与历史记录。
 
-## 快速开始
+## 功能特性
 
-### 开发环境
+- 文生图 / 图生图 / 局部选区编辑（Touch Edit）
+- 多图层画布、参考图、系统指令与提示词模板
+- 历史记录与单次调用成本统计
+- **双 AI 调用源**：fal.ai（全模型）与 Google Vertex AI（Nano Banana 系列）
+- 可选阿里云 OSS 持久化、飞书租户登录
+- 界面中英文切换
 
-```bash
-# 安装依赖
-npm install
-cd backend && npm install && cd ..
+## 技术栈
 
-# 配置环境变量
-cp backend/.env.example backend/.env
-# 编辑 backend/.env 填写配置
-
-# 启动后端
-cd backend
-npm run dev
-
-# 启动前端（新终端）
-npm run dev
-```
-
-访问 http://localhost:5173
-
-### 生产部署
-
-详细部署文档请参考 [DEPLOYMENT.md](./DEPLOYMENT.md)
+| 层级 | 技术 |
+|------|------|
+| 前端 | React、TypeScript、Vite、Tailwind CSS |
+| 后端 | Node.js、Express、TypeScript |
+| 数据库 | SQLite（默认）/ PostgreSQL |
+| 图像 AI | fal.ai；Vertex AI（`@google/genai`） |
+| 存储 | 阿里云 OSS（可选） |
+| 认证 | 飞书 OAuth（可选） |
 
 ## 项目结构
 
 ```
 nanolayer/
-├── backend/          # 后端 API 服务
-│   ├── src/         # 源代码
-│   ├── data/        # 数据库文件
-│   └── dist/        # 编译输出
-├── components/       # React 组件
-├── services/         # 前端服务
-└── dist/            # 前端构建输出
+├── backend/           # API：生成、历史、成本、认证
+│   ├── src/
+│   ├── data/          # SQLite（默认）
+│   └── README.md      # 后端配置与 API 说明
+├── components/        # React UI
+├── services/          # 前端 API 封装
+├── docs/              # 开发文档（如新增模型）
+├── DEPLOYMENT.md      # 生产部署
+└── USER_GUIDE.md      # 用户使用手册
 ```
 
-## 功能特性
+## 快速开始
 
-- 🎨 文本生成图片（Text-to-Image）
-- ✏️ 图片编辑（Image-to-Image）
-- 📚 历史记录查看
-- 💰 成本统计
-- 🌐 多语言支持
+### 1. 安装依赖
 
-## 技术栈
+```bash
+npm install
+cd backend && npm install && cd ..
+```
 
-- **前端**: React + TypeScript + Vite + Tailwind CSS
-- **后端**: Node.js + Express + TypeScript
-- **数据库**: SQLite / PostgreSQL
-- **存储**: 阿里云 OSS
-- **AI 服务**: FAL Platform
+### 2. 配置环境变量
+
+**后端**（必填 `FAL_KEY`；Vertex / OSS / 飞书按需）：
+
+```bash
+cp backend/.env.example backend/.env
+# 编辑 backend/.env
+```
+
+**前端**（启用飞书登录时）：
+
+```bash
+cp .env.example .env
+# 配置 VITE_FEISHU_REDIRECT_URI，须与飞书开放平台、后端 FEISHU_REDIRECT_URI 一致
+```
+
+### 3. 启动
+
+```bash
+# 终端 1：后端 → http://localhost:3000
+cd backend && npm run dev
+
+# 终端 2：前端 → http://localhost:5173
+npm run dev
+```
+
+浏览器访问 http://localhost:5173。开发模式下 Vite 会将 `/api` 代理到后端。
+
+### 生产部署
+
+见 [DEPLOYMENT.md](./DEPLOYMENT.md)（Docker、Nginx、PM2 等）。
+
+## 模型与调用源
+
+| 模型 | fal.ai | Vertex AI |
+|------|:------:|:---------:|
+| Nano Banana | ✅ | ✅ |
+| Nano Banana Pro | ✅ | ✅ |
+| Nano Banana 2 | ✅ | ✅ |
+| GPT Image 1.5 / 2 | ✅ | — |
+
+在右侧设置面板切换 **AI 调用源**；Vertex 需在后端配置 GCP 项目与服务账号，详见 [backend/README.md](./backend/README.md)。
 
 ## 文档
 
-- [部署文档](./DEPLOYMENT.md) - 生产环境部署指南
-- [用户使用手册](./USER_GUIDE.md) - 页面功能与操作指南
-- [后端 README](./backend/README.md) - 后端 API 文档
+| 文档 | 说明 |
+|------|------|
+| [USER_GUIDE.md](./USER_GUIDE.md) | 页面功能与操作流程（用户向） |
+| [backend/README.md](./backend/README.md) | 环境变量、API、Vertex / 飞书 / 成本配置 |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | 生产环境部署 |
+| [docs/ADD_MODEL.md](./docs/ADD_MODEL.md) | 新增 fal / Vertex 模型开发步骤 |
 
 ## 许可证
 
 MIT License
-
----
-
-# Nanolayer Studio
-
-前后端分离的 AI 图片生成和编辑工具。
-
-## 项目结构
-
-```
-nanolayer/
-├── backend/          # 后端 API 服务
-├── components/       # React 组件
-├── services/         # 前端服务（API 调用）
-├── utils/           # 工具函数
-└── ...
-```
-
-## 快速开始
-
-### 后端
-
-1. 进入后端目录：
-```bash
-cd backend
-```
-
-2. 安装依赖：
-```bash
-npm install
-```
-
-3. 配置环境变量（复制 `.env.example` 为 `.env` 并填写）
-
-4. 启动后端：
-```bash
-npm run dev
-```
-
-后端将在 `http://localhost:3000` 运行
-
-### 前端
-
-1. 安装依赖：
-```bash
-npm install
-```
-
-2. 启动开发服务器：
-```bash
-npm run dev
-```
-
-前端将在 `http://localhost:5173` 运行
-
-## 功能特性
-
-- ✅ 图片生成（text-to-image）
-- ✅ 图片编辑（image-to-image）
-- ✅ 区域选择编辑（Touch Edit）
-- ✅ 参考图片支持
-- ✅ 历史图片查看
-- ✅ 成本统计
-- ✅ 多语言支持（中英文）
-
-## 技术栈
-
-- **前端**: React + Vite + TypeScript
-- **后端**: Node.js + Express + TypeScript
-- **数据库**: SQLite
-- **AI 平台**: fal.ai (nano-banana)
-- **存储**: 阿里云 OSS
