@@ -104,6 +104,9 @@ export async function generateImage(params: GenerateImageParams): Promise<FalRes
       ? 'fal-ai/bytedance/seedream/v5/lite/text-to-image'
       : model;
 
+  console.log('Generate image input:', JSON.stringify(input, null, 2));
+  console.log('Generate model:', falModel);
+
   const result = await fal.subscribe(falModel, {
     input,
     logs: true,
