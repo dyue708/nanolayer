@@ -39,6 +39,7 @@ const formatModelName = (raw: string | undefined | null): string => {
     'nano-banana-2': 'Nano Banana 2',
     'gpt-image-1.5': 'GPT Image 1.5',
     'gpt-image-2': 'GPT Image 2',
+    'bytedance/seedream/v5/lite': 'Seedream 5 Lite',
   };
   const baseName = baseMap[id] || id;
 

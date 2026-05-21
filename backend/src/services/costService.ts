@@ -21,6 +21,8 @@ export class CostService {
     // nano-banana-2 的基础成本（1K 标准分辨率）
     this.costs.set('fal-ai/nano-banana-2', parseFloat(process.env.COST_NANO_BANANA_2 || '0.08'));
     this.costs.set('fal-ai/nano-banana-2/edit', parseFloat(process.env.COST_NANO_BANANA_2_EDIT || '0.08'));
+    this.costs.set('fal-ai/bytedance/seedream/v5/lite', parseFloat(process.env.COST_SEEDREAM_V5_LITE || '0.035'));
+    this.costs.set('fal-ai/bytedance/seedream/v5/lite/edit', parseFloat(process.env.COST_SEEDREAM_V5_LITE_EDIT || '0.035'));
 
     // ── Vertex AI 源（nano-banana 系列通过 Vertex 调用时的成本）─────────────
     // Vertex 调用走 Google 官方计费，成本与 fal 代理价格不同

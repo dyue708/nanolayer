@@ -340,6 +340,28 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                         </div>
                     </div>
                 </button>
+
+                <button 
+                    onClick={() => { if (aiSource !== 'vertex') onSelectModel('fal-ai/bytedance/seedream/v5/lite'); }}
+                    disabled={aiSource === 'vertex'}
+                    className={`w-full flex items-center p-2.5 rounded-lg border transition-all text-left group ${
+                        aiSource === 'vertex'
+                        ? 'opacity-30 cursor-not-allowed bg-slate-800 border-slate-700'
+                        : selectedModel === 'fal-ai/bytedance/seedream/v5/lite' 
+                            ? 'bg-rose-900/20 border-rose-500/50 ring-1 ring-rose-500/20' 
+                            : 'bg-slate-800 border-slate-700 hover:border-slate-600'
+                    }`}
+                >
+                    <div className={`w-8 h-8 rounded flex items-center justify-center mr-3 ${selectedModel === 'fal-ai/bytedance/seedream/v5/lite' && aiSource !== 'vertex' ? 'bg-rose-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                        <i className="fa-solid fa-image"></i>
+                    </div>
+                    <div>
+                        <div className={`text-xs font-bold ${selectedModel === 'fal-ai/bytedance/seedream/v5/lite' && aiSource !== 'vertex' ? 'text-rose-200' : 'text-slate-300'}`}>Seedream 5 Lite</div>
+                        <div className="text-[10px] text-slate-500 group-hover:text-slate-400">
+                            {aiSource === 'vertex' ? 'fal.ai 源可用' : 'ByteDance · $0.035/image'}
+                        </div>
+                    </div>
+                </button>
             </div>
         </section>
 
