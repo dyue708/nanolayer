@@ -91,6 +91,132 @@ export interface VertexResult {
   requestId: string;
 }
 
+type VertexResolution = NonNullable<VertexGenerateParams['resolution']>;
+
+/** Gemini 3 系列支持 imageSize；2.5 仅支持 aspectRatio（见官方 responseFormat 文档） */
+function supportsVertexImageSize(vertexModel: string): boolean {
+  return /gemini-3/i.test(vertexModel);
+}
+
+/** 应用内 0.5K → API 的 512（Gemini 3.1 Flash Image） */
+function mapResolutionToImageSize(resolution: VertexResolution): string {
+  return resolution === '0.5K' ? '512' : resolution;
+}
+
+/**
+ * 按 Google 文档构建 generateContent config（P0）
+ * @see https://ai.google.dev/gemini-api/docs/image-generation#aspect-ratio-and-image-size
+ */
+function buildVertexGenerateConfig(
+  vertexModel: string,
+  options?: {
+    aspectRatio?: VertexGenerateParams['aspectRatio'];
+    resolution?: VertexResolution;
+  }
+): Record<string, unknown> {
+  const config: Record<string, unknown> = {
+    responseModalities: ['IMAGE', 'TEXT'],
+  };
+
+  const image: Record<string, string> = {};
+  if (options?.aspectRatio) {
+    image.aspectRatio = options.aspectRatio;
+  }
+  if (options?.resolution && supportsVertexImageSize(vertexModel)) {
+    image.imageSize = mapResolutionToImageSize(options.resolution);
+  }
+
+  if (Object.keys(image).length > 0) {
+    config.responseFormat = { image };
+  }
+
+  return config;
+}
+
+/** 输入图数量上限：2.5 最多 3 张；Gemini 3 编辑场景预留 1 主图 + 参考图 */
+function limitReferenceImages(referenceImages: string[] | undefined, vertexModel: string): string[] {
+  if (!referenceImages?.length) return [];
+  const maxRefs = /gemini-2\.5/i.test(vertexModel) ? 2 : 13;
+  if (referenceImages.length > maxRefs) {
+    console.warn(
+      `[Vertex] referenceImages truncated ${referenceImages.length} -> ${maxRefs} (${vertexModel})`
+    );
+    return referenceImages.slice(0, maxRefs);
+  }
+  return referenceImages;
+}
+
+function buildSelectionEditPrompt(
+  prompt: string,
+  selection: NonNullable<VertexEditParams['selection']>
+): string {
+  return (
+    `Modify only the specific region located at approximately (X:${selection.x}%, Y:${selection.y}%) ` +
+    `with size (W:${selection.width}%, H:${selection.height}%) in Image 1 (the primary image). ` +
+    `Change that specific area to: ${prompt}. ` +
+    `IMPORTANT: Everything outside this selection MUST remain exactly 100% identical to Image 1.`
+  );
+}
+
+/**
+ * 合并为单条编辑指令（P1），对齐官方「输入图 + 任务描述」多图示例
+ */
+function buildEditTaskPrompt(
+  userPrompt: string,
+  referenceCount: number,
+  selection?: VertexEditParams['selection']
+): string {
+  const task = selection ? buildSelectionEditPrompt(userPrompt, selection) : userPrompt;
+
+  if (referenceCount === 0) {
+    return `Edit the provided image.\n\nTask: ${task}`;
+  }
+
+  const refLines = Array.from({ length: referenceCount }, (_, i) => {
+    const n = i + 2;
+    return (
+      `- Image ${n} (REFERENCE — guidance only): use for style, identity, lighting, materials, or details. ` +
+      `Do not replace Image 1 with this content unless the task explicitly requires it.`
+    );
+  }).join('\n');
+
+  return [
+    'Edit the provided images according to the task below.',
+    '',
+    'Images (in order):',
+    '- Image 1 (PRIMARY — apply all edits to this image only): the image to modify.',
+    refLines,
+    '',
+    `Task: ${task}`,
+    '',
+    'Rules:',
+    '- Apply all changes only to Image 1.',
+    '- Use reference image(s) only as guidance unless the task explicitly asks to transfer elements from them.',
+    '- Preserve everything outside any specified edit region in Image 1 unchanged.',
+  ].join('\n');
+}
+
+/** 编辑请求 parts：先 prompt，再主图，再参考图（与官方 JS 多图顺序一致） */
+function buildEditContentParts(
+  imageBase64: string,
+  referenceImages: string[],
+  editPrompt: string
+): Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> {
+  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+    { text: editPrompt },
+  ];
+
+  const { mimeType: mainMime, data: mainData } = stripDataUri(imageBase64);
+  parts.push({ inlineData: { mimeType: mainMime, data: mainData } });
+
+  for (const ref of referenceImages) {
+    const { mimeType: refMime, data: refData } = stripDataUri(ref);
+    parts.push({ inlineData: { mimeType: refMime, data: refData } });
+  }
+
+  return parts;
+}
+
 /** 从 data URI 中拆出 mimeType 和纯 base64 数据 */
 function stripDataUri(base64: string): { mimeType: string; data: string } {
   const match = base64.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.+)$/);
@@ -109,7 +235,7 @@ function makeRequestId(): string {
  * 文生图（text-to-image）via Vertex AI
  */
 export async function generateImageVertex(params: VertexGenerateParams): Promise<VertexResult> {
-  const { prompt, model, aspectRatio, systemInstruction } = params;
+  const { prompt, model, aspectRatio, resolution, systemInstruction } = params;
   const client = getVertexClient();
   const vertexModel = getFalToVertexModel()[model];
 
@@ -128,14 +254,7 @@ export async function generateImageVertex(params: VertexGenerateParams): Promise
   const userParts: any[] = [{ text: prompt }];
   contents.push({ role: 'user', parts: userParts });
 
-  const config: any = {
-    responseModalities: ['IMAGE', 'TEXT'],
-  };
-
-  // Gemini 图像生成支持 aspectRatio
-  if (aspectRatio) {
-    config.generationConfig = { ...(config.generationConfig || {}), aspectRatio };
-  }
+  const config = buildVertexGenerateConfig(vertexModel, { aspectRatio, resolution });
 
   console.log('[Vertex] generate model:', vertexModel, '| prompt:', prompt);
 
@@ -165,7 +284,16 @@ export async function generateImageVertex(params: VertexGenerateParams): Promise
  * 图片编辑（image-to-image）via Vertex AI
  */
 export async function editImageVertex(params: VertexEditParams): Promise<VertexResult> {
-  const { prompt, imageBase64, model, selection, referenceImages, systemInstruction, aspectRatio } = params;
+  const {
+    prompt,
+    imageBase64,
+    model,
+    selection,
+    referenceImages,
+    systemInstruction,
+    aspectRatio,
+    resolution,
+  } = params;
   const client = getVertexClient();
   const vertexModel = getFalToVertexModel()[model];
 
@@ -173,15 +301,8 @@ export async function editImageVertex(params: VertexEditParams): Promise<VertexR
     throw new Error(`模型 ${model} 不支持通过 Vertex AI 调用`);
   }
 
-  // 如果有选区，把坐标信息嵌入 prompt（与 fal 保持一致）
-  let finalPrompt = prompt;
-  if (selection) {
-    finalPrompt =
-      `Modify only the specific region located at approximately (X:${selection.x}%, Y:${selection.y}%) ` +
-      `with size (W:${selection.width}%, H:${selection.height}%) in the provided image. ` +
-      `Change that specific area to: ${prompt}. ` +
-      `IMPORTANT: Everything outside this selection MUST remain exactly 100% identical to the original image background.`;
-  }
+  const refs = limitReferenceImages(referenceImages, vertexModel);
+  const editPrompt = buildEditTaskPrompt(prompt, refs.length, selection);
 
   const contents: any[] = [];
 
@@ -190,39 +311,12 @@ export async function editImageVertex(params: VertexEditParams): Promise<VertexR
     contents.push({ role: 'model', parts: [{ text: 'Understood.' }] });
   }
 
-  // 构造用户消息：明确区分“待编辑主图”和“参考图”，提升 Gemini 对参考图的利用稳定性
-  const userParts: any[] = [];
-
-  const referenceHint =
-    referenceImages && referenceImages.length > 0
-      ? `\nUse the additional reference image(s) to guide style/identity/details, but apply edits only to the primary image.`
-      : '';
-  userParts.push({ text: `${finalPrompt}${referenceHint}` });
-
-  userParts.push({ text: 'Primary image to edit:' });
-
-  const { mimeType: mainMime, data: mainData } = stripDataUri(imageBase64);
-  userParts.push({ inlineData: { mimeType: mainMime, data: mainData } });
-
-  if (referenceImages?.length) {
-    referenceImages.forEach((ref, index) => {
-      userParts.push({ text: `Reference image ${index + 1} (for guidance only):` });
-      const { mimeType: refMime, data: refData } = stripDataUri(ref);
-      userParts.push({ inlineData: { mimeType: refMime, data: refData } });
-    });
-  }
-
+  const userParts = buildEditContentParts(imageBase64, refs, editPrompt);
   contents.push({ role: 'user', parts: userParts });
 
-  const config: any = {
-    responseModalities: ['IMAGE', 'TEXT'],
-  };
+  const config = buildVertexGenerateConfig(vertexModel, { aspectRatio, resolution });
 
-  if (aspectRatio) {
-    config.generationConfig = { ...(config.generationConfig || {}), aspectRatio };
-  }
-
-  console.log('[Vertex] edit model:', vertexModel, '| prompt:', finalPrompt.slice(0, 80), '...');
+  console.log('[Vertex] edit model:', vertexModel, '| refs:', refs.length, '| prompt:', editPrompt.slice(0, 80), '...');
 
   const response = await (client as any).models.generateContent({
     model: vertexModel,
