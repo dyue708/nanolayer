@@ -1,6 +1,10 @@
 import express, { type Request } from 'express';
 import { generateImage, editImage } from '../services/falService.js';
 import {
+  resolveAspectRatio,
+  type SupportedAspectRatio,
+} from '../utils/aspectRatioFromPrompt.js';
+import {
   generateImageVertex,
   editImageVertex,
   isVertexSupportedModel,
@@ -102,7 +106,7 @@ interface GenerateRequest {
   };
   referenceImages?: string[];
   systemInstruction?: string;
-  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  aspectRatio?: SupportedAspectRatio;
   resolution?: '0.5K' | '1K' | '2K' | '4K';
   userId?: string;
 }
@@ -164,6 +168,12 @@ router.post('/generate', async (req, res) => {
       return res.status(400).json({ error: 'prompt and model are required' });
     }
 
+    const { aspectRatio: effectiveAspectRatio, fromPrompt: aspectRatioFromPrompt } =
+      resolveAspectRatio(aspectRatio, prompt);
+    if (aspectRatioFromPrompt && effectiveAspectRatio) {
+      console.log('[images] aspect ratio from prompt:', effectiveAspectRatio);
+    }
+
     // 当请求使用 vertex 源但模型不支持时，返回错误
     const useVertex = aiSource === 'vertex';
     if (useVertex && !isVertexSupportedModel(model)) {
@@ -191,8 +201,9 @@ router.post('/generate', async (req, res) => {
           selection,
           referenceImages,
           systemInstruction,
-          aspectRatio,
+          aspectRatio: effectiveAspectRatio,
           resolution,
+          aspectRatioFromPrompt,
         });
       } else {
         falResult = await editImage({
@@ -208,7 +219,7 @@ router.post('/generate', async (req, res) => {
           selection,
           referenceImages,
           systemInstruction,
-          aspectRatio,
+          aspectRatio: effectiveAspectRatio,
           resolution,
         });
       }
@@ -218,7 +229,7 @@ router.post('/generate', async (req, res) => {
         falResult = await generateImageVertex({
           prompt,
           model: model as VertexSupportedFalModel,
-          aspectRatio,
+          aspectRatio: effectiveAspectRatio,
           resolution,
           systemInstruction,
         });
@@ -226,7 +237,7 @@ router.post('/generate', async (req, res) => {
         falResult = await generateImage({
           prompt,
           model,
-          aspectRatio,
+          aspectRatio: effectiveAspectRatio,
           resolution,
           systemInstruction,
         });
@@ -294,7 +305,8 @@ router.post('/generate', async (req, res) => {
       metadata: {
         width: dimensions.width,
         height: dimensions.height,
-        aspectRatio,
+        aspectRatio: effectiveAspectRatio,
+        aspectRatioFromPrompt: aspectRatioFromPrompt || undefined,
         resolution,
         requestId: falResult.requestId,
         ...(generatedByDisplayName

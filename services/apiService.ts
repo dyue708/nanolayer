@@ -21,7 +21,7 @@ export interface GenerateImageRequest {
   };
   referenceImages?: string[];
   systemInstruction?: string;
-  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '3:1' | '1:3';
   resolution?: '0.5K' | '1K' | '2K' | '4K';
   userId?: string;
 }

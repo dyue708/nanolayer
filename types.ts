@@ -62,5 +62,5 @@ export const VERTEX_SUPPORTED_MODELS: ImageGenerationModel[] = [
 
 export type Language = 'en' | 'zh';
 
-export type AspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+export type AspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '3:1' | '1:3';
 export type ImageResolution = '0.5K' | '1K' | '2K' | '4K';

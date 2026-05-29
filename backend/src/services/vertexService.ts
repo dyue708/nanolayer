@@ -64,7 +64,7 @@ function getVertexClient(): GoogleGenAI {
 export interface VertexGenerateParams {
   prompt: string;
   model: VertexSupportedFalModel;
-  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '3:1' | '1:3';
   resolution?: '0.5K' | '1K' | '2K' | '4K';
   systemInstruction?: string;
 }
@@ -81,8 +81,10 @@ export interface VertexEditParams {
   };
   referenceImages?: string[];
   systemInstruction?: string;
-  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '3:1' | '1:3';
   resolution?: '0.5K' | '1K' | '2K' | '4K';
+  /** 宽高比来自提示词解析时，在编辑 Rules 中写入输出要求 */
+  aspectRatioFromPrompt?: boolean;
 }
 
 export interface VertexResult {
@@ -161,15 +163,30 @@ function buildSelectionEditPrompt(
 /**
  * 合并为单条编辑指令（P1），对齐官方「输入图 + 任务描述」多图示例
  */
+function buildOutputRequirementLines(outputAspectRatio?: VertexEditParams['aspectRatio']): string[] {
+  if (!outputAspectRatio) return [];
+  return [`- Output image aspect ratio must be ${outputAspectRatio}.`];
+}
+
 function buildEditTaskPrompt(
   userPrompt: string,
   referenceCount: number,
-  selection?: VertexEditParams['selection']
+  selection?: VertexEditParams['selection'],
+  outputAspectRatio?: VertexEditParams['aspectRatio'],
+  appendOutputAspectRule?: boolean
 ): string {
   const task = selection ? buildSelectionEditPrompt(userPrompt, selection) : userPrompt;
+  const outputLines =
+    appendOutputAspectRule && outputAspectRatio
+      ? buildOutputRequirementLines(outputAspectRatio)
+      : [];
 
   if (referenceCount === 0) {
-    return `Edit the provided image.\n\nTask: ${task}`;
+    const lines = ['Edit the provided image.', '', `Task: ${task}`];
+    if (outputLines.length > 0) {
+      lines.push('', 'Output requirements:', ...outputLines);
+    }
+    return lines.join('\n');
   }
 
   const refLines = Array.from({ length: referenceCount }, (_, i) => {
@@ -193,6 +210,7 @@ function buildEditTaskPrompt(
     '- Apply all changes only to Image 1.',
     '- Use reference image(s) only as guidance unless the task explicitly asks to transfer elements from them.',
     '- Preserve everything outside any specified edit region in Image 1 unchanged.',
+    ...outputLines,
   ].join('\n');
 }
 
@@ -293,6 +311,7 @@ export async function editImageVertex(params: VertexEditParams): Promise<VertexR
     systemInstruction,
     aspectRatio,
     resolution,
+    aspectRatioFromPrompt,
   } = params;
   const client = getVertexClient();
   const vertexModel = getFalToVertexModel()[model];
@@ -302,7 +321,13 @@ export async function editImageVertex(params: VertexEditParams): Promise<VertexR
   }
 
   const refs = limitReferenceImages(referenceImages, vertexModel);
-  const editPrompt = buildEditTaskPrompt(prompt, refs.length, selection);
+  const editPrompt = buildEditTaskPrompt(
+    prompt,
+    refs.length,
+    selection,
+    aspectRatio,
+    aspectRatioFromPrompt
+  );
 
   const contents: any[] = [];
 

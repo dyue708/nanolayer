@@ -16,7 +16,7 @@ export interface GenerateImageParams {
     | 'fal-ai/nano-banana-2'
     | 'fal-ai/gpt-image-2'
     | 'fal-ai/bytedance/seedream/v5/lite';
-  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '3:1' | '1:3';
   resolution?: '0.5K' | '1K' | '2K' | '4K';
   systemInstruction?: string;
 }
@@ -39,7 +39,7 @@ export interface EditImageParams {
   };
   referenceImages?: string[];
   systemInstruction?: string;
-  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '3:1' | '1:3';
   resolution?: '0.5K' | '1K' | '2K' | '4K';
 }
 
