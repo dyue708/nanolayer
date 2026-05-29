@@ -2,6 +2,7 @@
 import React from 'react';
 import { ImageGenerationModel, AISource, VERTEX_SUPPORTED_MODELS, Language, Layer } from '../types';
 import { t } from '../utils/i18n';
+import { EDIT_OUTPUT_ASPECT_PRESETS } from '../utils/aspectRatio';
 import { minCanvasSizeForAspect } from '../utils/psdHelper';
 
 interface ConfigPanelProps {
@@ -158,15 +159,9 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {[
-                  { rw: 1, rh: 1 },
-                  { rw: 4, rh: 3 },
-                  { rw: 3, rh: 4 },
-                  { rw: 16, rh: 9 },
-                  { rw: 9, rh: 16 },
-                ].map(({ rw, rh }) => (
+                {EDIT_OUTPUT_ASPECT_PRESETS.map(({ rw, rh, label }) => (
                   <button
-                    key={`${rw}:${rh}`}
+                    key={label}
                     type="button"
                     onClick={() => {
                       const { width, height } = minCanvasSizeForAspect(
@@ -180,7 +175,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                     }}
                     className="text-[10px] px-2 py-1 rounded border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-300"
                   >
-                    {rw}:{rh}
+                    {label}
                   </button>
                 ))}
               </div>

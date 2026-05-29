@@ -8,6 +8,7 @@ import PromptBar from './components/PromptBar';
 import PromptGallery from './components/PromptGallery';
 import HistoryPanel from './components/HistoryPanel';
 import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, AISource, Language } from './types';
+import { aspectRatioFromDimensions } from './utils/aspectRatio';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail, buildPaddedEditSource, mapSelectionToPaddedImagePercent } from './utils/psdHelper';
 import {
   generateImage,
@@ -485,6 +486,11 @@ const App: React.FC = () => {
           if (refLayer) referenceBase64s.push(canvasToBase64(refLayer.canvas));
       });
 
+      const editAspectRatio =
+          paddedEdit
+              ? aspectRatioFromDimensions(paddedEdit.width, paddedEdit.height)
+              : undefined;
+
       result = await generateImage({
           prompt: promptText,
           model: selectedModel,
@@ -492,7 +498,8 @@ const App: React.FC = () => {
           imageBase64: paddedEdit ? paddedEdit.base64 : undefined,
           selection: selectionPercent,
           referenceImages: referenceBase64s.length > 0 ? referenceBase64s : undefined,
-          systemInstruction: systemInstruction || undefined
+          systemInstruction: systemInstruction || undefined,
+          aspectRatio: editAspectRatio,
       });
       
       console.log('API response:', result);

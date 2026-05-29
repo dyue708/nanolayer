@@ -1,3 +1,5 @@
+import type { AspectRatio } from '../types';
+
 // 使用相对路径，通过 Vite 代理访问后端，避免 CORS 问题
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -21,7 +23,7 @@ export interface GenerateImageRequest {
   };
   referenceImages?: string[];
   systemInstruction?: string;
-  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '3:1' | '1:3';
+  aspectRatio?: AspectRatio;
   resolution?: '0.5K' | '1K' | '2K' | '4K';
   userId?: string;
 }
