@@ -134,13 +134,14 @@ COST_VERTEX_NANO_BANANA_2_EDIT=0.067
 
 ### 飞书认证（可选）
 
-配置 `FEISHU_ALLOWED_TENANT_KEY` 后，`/api/images`（除 `/proxy`）、`/api/analysis` 需携带 `Authorization: Bearer <user_access_token>`。
+配置 `FEISHU_ALLOWED_TENANT_KEY` 后，`/api/images`（除 `/proxy`）、`/api/analysis` 需携带 `Authorization: Bearer <应用会话 token>`。OAuth 换票成功后由后端签发会话（默认 **24 小时**），此期间重复打开页面无需再次飞书授权。
 
 ```bash
 FEISHU_APP_ID=...
 FEISHU_APP_SECRET=...
 FEISHU_ALLOWED_TENANT_KEY=your_tenant_key    # 多个租户英文逗号分隔
-JWT_SECRET=...                               # 按需
+FEISHU_SESSION_SECRET=...                    # 建议配置；用于签名会话 token
+# FEISHU_SESSION_TTL_SECONDS=86400           # 可选，默认 24h
 # FEISHU_REDIRECT_URI=http://localhost:5173/
 ```
 
@@ -183,8 +184,8 @@ pm2 start ecosystem.config.js
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/auth/feishu/status` | 是否强制登录、`appId` |
-| POST | `/api/auth/feishu/exchange` | OAuth `code` 换 `user_access_token` |
-| GET | `/api/auth/feishu/me` | 校验 Bearer token，返回用户信息 |
+| POST | `/api/auth/feishu/exchange` | OAuth `code` 换应用会话 token（默认 24h） |
+| GET | `/api/auth/feishu/me` | 校验 Bearer 会话 token，返回用户信息 |
 
 ### 图片
 

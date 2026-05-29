@@ -370,10 +370,11 @@ OSS_ACCESS_KEY_SECRET=your_oss_secret
 OSS_REGION=oss-cn-hangzhou
 OSS_BUCKET=your_bucket_name
 
-# 飞书登录配置（可选）
+# 飞书登录配置（可选；OAuth 后由后端签发 24h 应用会话，见 backend/.env.example）
 FEISHU_APP_ID=your_feishu_app_id
 FEISHU_APP_SECRET=your_feishu_app_secret
-JWT_SECRET=your_jwt_secret
+FEISHU_SESSION_SECRET=your_session_signing_secret
+# FEISHU_SESSION_TTL_SECONDS=86400
 
 # 成本配置（每张图片的成本，单位：美元）
 COST_NANO_BANANA=0.0396

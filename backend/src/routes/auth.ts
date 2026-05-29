@@ -1,8 +1,13 @@
 import express from 'express';
+import { createAppSessionToken, isAppSessionToken } from '../services/appSessionService.js';
+import {
+  authFailureMessage,
+  isExpectedAuthFailure,
+  resolveAuthBearerToken,
+} from '../services/authTokenResolver.js';
 import {
   FeishuTenantDeniedError,
   exchangeAuthorizationCodeForUserAccessToken,
-  isExpectedFeishuAccessTokenFailure,
   isFeishuTenantRestrictionEnabled,
   verifyFeishuUserAccessToken,
 } from '../services/feishuTenantService.js';
@@ -31,7 +36,7 @@ router.get('/feishu/status', (_req, res) => {
 
 /**
  * POST /api/auth/feishu/exchange
- * Body: { code } — 将 OAuth code 换为 user_access_token，并校验 tenant_key 后才返回 token。
+ * Body: { code } — OAuth 换票并校验租户后，签发应用会话 token（默认 24h 有效）。
  */
 router.post('/feishu/exchange', async (req, res) => {
   try {
@@ -51,12 +56,11 @@ router.post('/feishu/exchange', async (req, res) => {
 
     const feishuUser = await verifyFeishuUserAccessToken(accessToken);
     const dbUserId = await dbService.upsertUserFromFeishu(feishuUser);
+    const session = createAppSessionToken(feishuUser, dbUserId);
 
     res.json({
-      access_token: accessToken,
-      expires_in: tokenPayload.expires_in,
-      refresh_token: tokenPayload.refresh_token,
-      refresh_expires_in: tokenPayload.refresh_expires_in,
+      access_token: session.access_token,
+      expires_in: session.expires_in,
       db_user_id: dbUserId,
     });
   } catch (error: unknown) {
@@ -72,7 +76,8 @@ router.post('/feishu/exchange', async (req, res) => {
 
 /**
  * GET /api/auth/feishu/me
- * 使用 Authorization: Bearer <user_access_token>，校验租户后返回用户信息（供前端探测登录态）。
+ * 使用 Authorization: Bearer <应用会话 token>，返回用户信息（供前端探测登录态）。
+ * 若仍携带旧版飞书 user_access_token，校验通过后会附带 session_token 供前端升级存储。
  */
 router.get('/feishu/me', async (req, res) => {
   try {
@@ -86,24 +91,31 @@ router.get('/feishu/me', async (req, res) => {
       auth?.startsWith('Bearer ') ? auth.slice(7).trim() : '';
     if (!token) {
       return res.status(401).json({
-        error: '缺少 Authorization: Bearer <飞书 user_access_token>',
+        error: '缺少 Authorization: Bearer <应用会话 token>',
       });
     }
-    const feishuUser = await verifyFeishuUserAccessToken(token);
-    const dbUserId = await dbService.upsertUserFromFeishu(feishuUser);
-    res.json({ code: 0, data: { ...feishuUser, db_user_id: dbUserId }, msg: 'success' });
+    const { feishuUser, dbUserId } = await resolveAuthBearerToken(token);
+    const legacyToken = !isAppSessionToken(token);
+    const sessionUpgrade = legacyToken
+      ? createAppSessionToken(feishuUser, dbUserId)
+      : null;
+    res.json({
+      code: 0,
+      data: { ...feishuUser, db_user_id: dbUserId },
+      msg: 'success',
+      ...(sessionUpgrade
+        ? { session_token: sessionUpgrade.access_token, expires_in: sessionUpgrade.expires_in }
+        : {}),
+    });
   } catch (error: unknown) {
-    if (!isExpectedFeishuAccessTokenFailure(error)) {
+    if (!isExpectedAuthFailure(error)) {
       console.error('feishu/me:', error);
     }
     if (error instanceof FeishuTenantDeniedError) {
       res.status(403).json({ error: error.message });
       return;
     }
-    const msg = error instanceof Error ? error.message : '校验失败';
-    res.status(401).json({
-      error: isExpectedFeishuAccessTokenFailure(error) ? '飞书 token 无效或已过期' : msg,
-    });
+    res.status(401).json({ error: authFailureMessage(error) });
   }
 });
 

@@ -1,10 +1,12 @@
 import type { RequestHandler } from 'express';
-import { dbService } from '../services/dbService.js';
+import {
+  authFailureMessage,
+  isExpectedAuthFailure,
+  resolveAuthBearerToken,
+} from '../services/authTokenResolver.js';
 import {
   FeishuTenantDeniedError,
-  isExpectedFeishuAccessTokenFailure,
   isFeishuTenantRestrictionEnabled,
-  verifyFeishuUserAccessToken,
   type FeishuAuthenUserInfo,
 } from '../services/feishuTenantService.js';
 
@@ -28,8 +30,7 @@ function extractBearerToken(authorization: string | undefined): string | null {
 }
 
 /**
- * 当配置了 FEISHU_ALLOWED_TENANT_KEY 时：要求 Authorization: Bearer <user_access_token>，
- * 调用飞书 user_info 接口并校验 tenant_key。
+ * 当配置了 FEISHU_ALLOWED_TENANT_KEY 时：要求 Authorization: Bearer <应用会话 token>（默认 24h）。
  * 未配置时：不拦截（兼容本地开发）。
  *
  * 注意：不含 GET /proxy（img 标签无法带 Bearer），需在路由中把 proxy 注册在本中间件之前。
@@ -43,25 +44,24 @@ export const requireFeishuTenantWhenConfigured: RequestHandler = async (req, res
   const token = extractBearerToken(req.headers.authorization);
   if (!token) {
     res.status(401).json({
-      error: '需要登录：请在 Authorization 头携带 Bearer <飞书 user_access_token>',
+      error: '需要登录：请在 Authorization 头携带 Bearer <应用会话 token>',
     });
     return;
   }
 
   try {
-    const feishuUser = await verifyFeishuUserAccessToken(token);
+    const { feishuUser, dbUserId } = await resolveAuthBearerToken(token);
     req.feishuUser = feishuUser;
-    req.feishuDbUserId = await dbService.upsertUserFromFeishu(feishuUser);
+    req.feishuDbUserId = dbUserId;
     next();
   } catch (e: unknown) {
     if (e instanceof FeishuTenantDeniedError) {
       res.status(403).json({ error: e.message });
       return;
     }
-    const msg = e instanceof Error ? e.message : String(e);
-    if (!isExpectedFeishuAccessTokenFailure(e)) {
+    if (!isExpectedAuthFailure(e)) {
       console.error('Feishu tenant auth failed:', e);
     }
-    res.status(401).json({ error: msg.includes('配置') ? msg : '飞书 token 无效或已过期' });
+    res.status(401).json({ error: authFailureMessage(e) });
   }
 };

@@ -66,8 +66,12 @@ export interface ImageHistoryResponse {
   limit: number;
 }
 
-/** 飞书网页授权拿到的 user_access_token；启用后端 FEISHU_ALLOWED_TENANT_KEY 后由登录流程写入 */
-export const FEISHU_TOKEN_STORAGE_KEY = 'nanolayer_feishu_user_access_token';
+/** 后端签发的应用会话 token（默认 24h）；OAuth 交换后写入 */
+export const APP_SESSION_STORAGE_KEY = 'nanolayer_app_session_token';
+/** @deprecated 旧版存飞书 user_access_token，启动时会尝试迁移 */
+const LEGACY_FEISHU_TOKEN_STORAGE_KEY = 'nanolayer_feishu_user_access_token';
+/** 与 APP_SESSION_STORAGE_KEY 相同，保留给现有引用 */
+export const FEISHU_TOKEN_STORAGE_KEY = APP_SESSION_STORAGE_KEY;
 
 function abortAfter(ms: number): AbortSignal {
   const c = new AbortController();
@@ -83,19 +87,33 @@ function requestTimeoutSignal(ms: number): AbortSignal {
   return abortAfter(ms);
 }
 
+export function getStoredAppSessionToken(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  return (
+    localStorage.getItem(APP_SESSION_STORAGE_KEY) ||
+    localStorage.getItem(LEGACY_FEISHU_TOKEN_STORAGE_KEY)
+  );
+}
+
+export function persistAppSessionToken(token: string): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(APP_SESSION_STORAGE_KEY, token);
+  localStorage.removeItem(LEGACY_FEISHU_TOKEN_STORAGE_KEY);
+}
+
 export function clearFeishuAccessToken() {
   if (typeof localStorage === 'undefined') return;
-  localStorage.removeItem(FEISHU_TOKEN_STORAGE_KEY);
+  localStorage.removeItem(APP_SESSION_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_FEISHU_TOKEN_STORAGE_KEY);
 }
 
 let feishuSessionReloading = false;
 
-function hasStoredFeishuAccessToken(): boolean {
-  if (typeof localStorage === 'undefined') return false;
-  return Boolean(localStorage.getItem(FEISHU_TOKEN_STORAGE_KEY));
+function hasStoredAppSessionToken(): boolean {
+  return Boolean(getStoredAppSessionToken());
 }
 
-/** 飞书 user_access_token 失效时清本地凭证并整页刷新，由登录门重新拉起授权。 */
+/** 应用会话失效时清本地凭证并整页刷新，由登录门重新拉起授权。 */
 export function forceFeishuReLogin(): void {
   if (feishuSessionReloading || typeof window === 'undefined') return;
   feishuSessionReloading = true;
@@ -137,8 +155,6 @@ export async function getFeishuAuthStatus(): Promise<{
 export async function exchangeFeishuOAuthCode(code: string): Promise<{
   access_token: string;
   expires_in?: number;
-  refresh_token?: string;
-  refresh_expires_in?: number;
 }> {
   const res = await fetch(`${API_BASE_URL}/auth/feishu/exchange`, {
     method: 'POST',
@@ -150,24 +166,27 @@ export async function exchangeFeishuOAuthCode(code: string): Promise<{
   if (!res.ok) {
     throw new Error((body as { error?: string }).error || `登录交换失败: ${res.status}`);
   }
-  return body as {
-    access_token: string;
-    expires_in?: number;
-    refresh_token?: string;
-    refresh_expires_in?: number;
-  };
+  return body as { access_token: string; expires_in?: number };
 }
 
-export async function getFeishuMe(timeoutMs = 15000): Promise<{
+type FeishuMeResponse = {
   code: number;
   data: Record<string, unknown>;
   msg: string;
-}> {
+  session_token?: string;
+  expires_in?: number;
+};
+
+export async function getFeishuMe(timeoutMs = 15000): Promise<FeishuMeResponse> {
   try {
-    return await request('/auth/feishu/me', {
+    const result = await request<FeishuMeResponse>('/auth/feishu/me', {
       method: 'GET',
       signal: requestTimeoutSignal(timeoutMs),
     });
+    if (result.session_token) {
+      persistAppSessionToken(result.session_token);
+    }
+    return result;
   } catch (e: unknown) {
     if (e instanceof DOMException && e.name === 'AbortError') {
       throw new Error('校验登录状态超时，请稍后重试');
@@ -177,8 +196,7 @@ export async function getFeishuMe(timeoutMs = 15000): Promise<{
 }
 
 function feishuAuthHeaders(): Record<string, string> {
-  if (typeof localStorage === 'undefined') return {};
-  const token = localStorage.getItem(FEISHU_TOKEN_STORAGE_KEY);
+  const token = getStoredAppSessionToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -201,7 +219,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     const message = error.error || `HTTP error! status: ${response.status}`;
     if (
       response.status === 401 &&
-      hasStoredFeishuAccessToken() &&
+      hasStoredAppSessionToken() &&
       !endpoint.startsWith('/auth/feishu/exchange')
     ) {
       forceFeishuReLogin();

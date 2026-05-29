@@ -14,7 +14,7 @@ import {
   analyzeImage,
   ImageHistoryItem,
   clearFeishuAccessToken,
-  FEISHU_TOKEN_STORAGE_KEY,
+  getStoredAppSessionToken,
 } from './services/apiService';
 import { t } from './utils/i18n';
 import { PromptExample } from './utils/promptExamples';
@@ -1022,7 +1022,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="p-6 space-y-6">
                       {typeof localStorage !== 'undefined' &&
-                        localStorage.getItem(FEISHU_TOKEN_STORAGE_KEY) && (
+                        getStoredAppSessionToken() && (
                           <div>
                             <button
                               type="button"

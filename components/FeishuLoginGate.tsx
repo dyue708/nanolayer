@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   clearFeishuAccessToken,
   exchangeFeishuOAuthCode,
-  FEISHU_TOKEN_STORAGE_KEY,
   getFeishuAuthStatus,
   getFeishuMe,
+  getStoredAppSessionToken,
+  persistAppSessionToken,
 } from '../services/apiService';
 import { t } from '../utils/i18n';
 import type { Language } from '../types';
@@ -44,7 +45,6 @@ function buildFeishuAuthorizeUrl(appId: string): string {
   u.searchParams.set('response_type', 'code');
   u.searchParams.set('redirect_uri', uri);
   u.searchParams.set('state', state);
-  u.searchParams.set('prompt', 'consent');
   return u.toString();
 }
 
@@ -54,7 +54,7 @@ async function exchangeOAuthCodeOnce(code: string): Promise<void> {
     p = (async () => {
       try {
         const data = await exchangeFeishuOAuthCode(code);
-        localStorage.setItem(FEISHU_TOKEN_STORAGE_KEY, data.access_token);
+        persistAppSessionToken(data.access_token);
       } finally {
         feishuCodePromises.delete(code);
         const url = new URL(window.location.href);
@@ -157,7 +157,7 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
         }
       }
 
-      const token = localStorage.getItem(FEISHU_TOKEN_STORAGE_KEY);
+      const token = getStoredAppSessionToken();
       if (!token) {
         enterLoginPhase(aid, null);
         return;
