@@ -59,7 +59,7 @@ cp backend/.env.example backend/.env
 
 ```bash
 cp .env.example .env
-# 配置 VITE_FEISHU_REDIRECT_URI，须与飞书开放平台、后端 FEISHU_REDIRECT_URI 一致
+# 飞书 OAuth：后端配置 FRONTEND_URL，飞书后台填 FRONTEND_URL/（见 backend/.env.example）
 ```
 
 ### 3. 启动

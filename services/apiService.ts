@@ -124,6 +124,8 @@ export function forceFeishuReLogin(): void {
 export async function getFeishuAuthStatus(): Promise<{
   authRequired: boolean;
   appId?: string;
+  /** 与后端 OAuth 换票一致的回调地址（由 FRONTEND_URL 推导，或 FEISHU_REDIRECT_URI 覆盖） */
+  redirectUri?: string;
 }> {
   let res: Response;
   try {

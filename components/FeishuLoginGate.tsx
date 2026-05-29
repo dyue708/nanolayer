@@ -18,9 +18,12 @@ function readLang(): Language {
   return 'zh';
 }
 
-function redirectUriForOAuth(): string {
+/** 优先环境变量覆盖；否则用后端 /feishu/status 下发的地址（源于 FRONTEND_URL） */
+function resolveOAuthRedirectUri(serverRedirectUri?: string): string {
   const fromEnv = import.meta.env.VITE_FEISHU_REDIRECT_URI?.trim();
   if (fromEnv) return fromEnv;
+  const fromServer = serverRedirectUri?.trim();
+  if (fromServer) return fromServer;
   return `${window.location.origin}/`;
 }
 
@@ -36,10 +39,10 @@ function oauthRandomState(): string {
   });
 }
 
-function buildFeishuAuthorizeUrl(appId: string): string {
+function buildFeishuAuthorizeUrl(appId: string, redirectUri: string): string {
   const state = oauthRandomState();
   sessionStorage.setItem('nanolayer_feishu_oauth_state', state);
-  const uri = redirectUriForOAuth();
+  const uri = redirectUri;
   const u = new URL('https://accounts.feishu.cn/open-apis/authen/v1/authorize');
   u.searchParams.set('client_id', appId);
   u.searchParams.set('response_type', 'code');
@@ -83,11 +86,14 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
   const [appId, setAppId] = useState<string>('');
   /** 预生成的授权 URL（原生 <a href> 跳转，避免线上仅有按钮点击无效的情况） */
   const [loginHref, setLoginHref] = useState<string | null>(null);
+  const [oauthRedirectUri, setOauthRedirectUri] = useState('');
 
-  const enterLoginPhase = useCallback((aid: string, message: string | null = null) => {
+  const enterLoginPhase = useCallback(
+    (aid: string, redirectUri: string, message: string | null = null) => {
     const trimmed = aid.trim();
     setAuthRequired(true);
     setAppId(trimmed);
+    setOauthRedirectUri(redirectUri);
     setError(message);
     if (!trimmed) {
       setLoginHref(null);
@@ -95,13 +101,14 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
       return;
     }
     try {
-      setLoginHref(buildFeishuAuthorizeUrl(trimmed));
+      setLoginHref(buildFeishuAuthorizeUrl(trimmed, redirectUri));
     } catch (err: unknown) {
       setLoginHref(null);
       setError(err instanceof Error ? err.message : String(err));
     }
     setPhase('login');
-  }, []);
+  },
+  []);
 
   const bootstrap = useCallback(async () => {
     setError(null);
@@ -114,15 +121,18 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
       }
 
       const aid = (status.appId ?? '').trim();
+      const redirectUri = resolveOAuthRedirectUri(status.redirectUri);
       if (!aid) {
         setAuthRequired(true);
         setAppId('');
+        setOauthRedirectUri(redirectUri);
         setError(t(lang, 'feishuMissingAppId'));
         setLoginHref(null);
         setPhase('login');
         return;
       }
       setAppId(aid);
+      setOauthRedirectUri(redirectUri);
 
       const params = new URLSearchParams(window.location.search);
       const oauthError = params.get('error');
@@ -131,7 +141,7 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
         url.searchParams.delete('error');
         url.searchParams.delete('state');
         window.history.replaceState({}, '', url.pathname + url.search + url.hash);
-        enterLoginPhase(aid, t(lang, 'feishuAccessDenied'));
+        enterLoginPhase(aid, redirectUri, t(lang, 'feishuAccessDenied'));
         return;
       }
 
@@ -141,7 +151,7 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
 
       if (code) {
         if (expectedState && state && state !== expectedState) {
-          enterLoginPhase(aid, t(lang, 'feishuLoginStateError'));
+          enterLoginPhase(aid, redirectUri, t(lang, 'feishuLoginStateError'));
           return;
         }
         if (state && expectedState) {
@@ -152,14 +162,14 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
           await exchangeOAuthCodeOnce(code);
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
-          enterLoginPhase(aid, msg);
+          enterLoginPhase(aid, redirectUri, msg);
           return;
         }
       }
 
       const token = getStoredAppSessionToken();
       if (!token) {
-        enterLoginPhase(aid, null);
+        enterLoginPhase(aid, redirectUri, null);
         return;
       }
 
@@ -168,7 +178,7 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
       } catch (e: unknown) {
         clearFeishuAccessToken();
         const msg = e instanceof Error ? e.message : null;
-        enterLoginPhase(aid, msg);
+        enterLoginPhase(aid, redirectUri, msg);
         return;
       }
 
@@ -248,7 +258,7 @@ const FeishuLoginGate: React.FC<Props> = ({ children }) => {
             <p className="mt-4 text-center text-[11px] text-slate-500 leading-relaxed">
               {t(lang, 'feishuRedirectHint')}
               <code className="block mt-2 break-all rounded bg-slate-950 px-2 py-1 text-slate-400">
-                {redirectUriForOAuth()}
+                {oauthRedirectUri || resolveOAuthRedirectUri()}
               </code>
             </p>
           </>

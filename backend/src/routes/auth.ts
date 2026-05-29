@@ -9,6 +9,7 @@ import {
   FeishuTenantDeniedError,
   exchangeAuthorizationCodeForUserAccessToken,
   isFeishuTenantRestrictionEnabled,
+  resolveFeishuOAuthRedirectUri,
   verifyFeishuUserAccessToken,
 } from '../services/feishuTenantService.js';
 import { dbService } from '../services/dbService.js';
@@ -28,9 +29,22 @@ router.use((_req, res, next) => {
  */
 router.get('/feishu/status', (_req, res) => {
   const authRequired = isFeishuTenantRestrictionEnabled();
+  if (!authRequired) {
+    res.json({ authRequired: false });
+    return;
+  }
+
+  let redirectUri: string | undefined;
+  try {
+    redirectUri = resolveFeishuOAuthRedirectUri();
+  } catch {
+    redirectUri = undefined;
+  }
+
   res.json({
-    authRequired,
-    ...(authRequired ? { appId: process.env.FEISHU_APP_ID || '' } : {}),
+    authRequired: true,
+    appId: process.env.FEISHU_APP_ID || '',
+    redirectUri,
   });
 });
 

@@ -44,7 +44,7 @@ cp .env.example .env
 
 ```bash
 PORT=3000
-FRONTEND_URL=http://localhost:5173   # CORS 来源
+FRONTEND_URL=http://localhost:5173   # CORS；飞书 OAuth 回调为 FRONTEND_URL/（飞书后台填同一地址）
 # LOG_DIR=./logs                     # 可选，应用日志目录
 ```
 
@@ -142,10 +142,10 @@ FEISHU_APP_SECRET=...
 FEISHU_ALLOWED_TENANT_KEY=your_tenant_key    # 多个租户英文逗号分隔
 FEISHU_SESSION_SECRET=...                    # 建议配置；用于签名会话 token
 # FEISHU_SESSION_TTL_SECONDS=86400           # 可选，默认 24h
-# FEISHU_REDIRECT_URI=http://localhost:5173/
+# FEISHU_REDIRECT_URI=...   # 可选，仅当与 FRONTEND_URL/ 不一致时
 ```
 
-前端需在仓库根目录 `.env` 配置 `VITE_FEISHU_REDIRECT_URI`，与飞书开放平台回调一致。
+OAuth 回调地址由 `FRONTEND_URL` 自动推导（末尾加 `/`），前端通过 `GET /api/auth/feishu/status` 的 `redirectUri` 与后端、飞书后台保持一致；一般无需再配 `VITE_FEISHU_REDIRECT_URI`。
 
 ## 运行
 
