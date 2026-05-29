@@ -53,6 +53,24 @@ export type ImageGenerationModel =
  */
 export type AISource = 'fal' | 'vertex';
 
+/** 前端默认 AI 调用源 */
+export const DEFAULT_AI_SOURCE: AISource = 'vertex';
+
+const AI_SOURCE_STORAGE_KEY = 'nano_ai_source';
+
+/** 读取本地保存的 AI 源；无效或未设置时返回默认 Vertex */
+export function readStoredAiSource(): AISource {
+  if (typeof localStorage === 'undefined') return DEFAULT_AI_SOURCE;
+  const stored = localStorage.getItem(AI_SOURCE_STORAGE_KEY);
+  return stored === 'fal' || stored === 'vertex' ? stored : DEFAULT_AI_SOURCE;
+}
+
+export function persistAiSource(source: AISource): void {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(AI_SOURCE_STORAGE_KEY, source);
+  }
+}
+
 /** 支持通过 Vertex AI 调用的模型列表 */
 export const VERTEX_SUPPORTED_MODELS: ImageGenerationModel[] = [
   'fal-ai/nano-banana',

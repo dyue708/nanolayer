@@ -7,7 +7,18 @@ import ConfigPanel from './components/ConfigPanel';
 import PromptBar from './components/PromptBar';
 import PromptGallery from './components/PromptGallery';
 import HistoryPanel from './components/HistoryPanel';
-import { Layer, ToolMode, AnalysisResult, SelectionRect, ImageGenerationModel, AISource, Language } from './types';
+import {
+  Layer,
+  ToolMode,
+  AnalysisResult,
+  SelectionRect,
+  ImageGenerationModel,
+  AISource,
+  Language,
+  VERTEX_SUPPORTED_MODELS,
+  readStoredAiSource,
+  persistAiSource,
+} from './types';
 import { aspectRatioFromDimensions } from './utils/aspectRatio';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail, buildPaddedEditSource, mapSelectionToPaddedImagePercent } from './utils/psdHelper';
 import {
@@ -58,7 +69,17 @@ const App: React.FC = () => {
   const [showConfigPanel, setShowConfigPanel] = useState(true);
   const [systemInstruction, setSystemInstruction] = useState('');
   const [selectedModel, setSelectedModel] = useState<ImageGenerationModel>('fal-ai/nano-banana');
-  const [aiSource, setAiSource] = useState<AISource>('fal');
+  const [aiSource, setAiSource] = useState<AISource>(readStoredAiSource);
+
+  const handleAiSourceChange = useCallback((source: AISource) => {
+    setAiSource(source);
+    persistAiSource(source);
+    if (source === 'vertex') {
+      setSelectedModel((current) =>
+        VERTEX_SUPPORTED_MODELS.includes(current) ? current : 'fal-ai/nano-banana'
+      );
+    }
+  }, []);
   
   const [referenceLayerIds, setReferenceLayerIds] = useState<string[]>([]);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
@@ -994,7 +1015,7 @@ const App: React.FC = () => {
                         selectedModel={selectedModel}
                         onSelectModel={setSelectedModel}
                         aiSource={aiSource}
-                        onAiSourceChange={setAiSource}
+                        onAiSourceChange={handleAiSourceChange}
                         systemInstruction={systemInstruction}
                         onSystemInstructionChange={setSystemInstruction}
                         onApplyTemplate={handleApplyTemplate}

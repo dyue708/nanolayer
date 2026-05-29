@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ImageGenerationModel, AISource, VERTEX_SUPPORTED_MODELS, Language, Layer } from '../types';
+import { ImageGenerationModel, AISource, Language, Layer } from '../types';
 import { t } from '../utils/i18n';
 import { EDIT_OUTPUT_ASPECT_PRESETS } from '../utils/aspectRatio';
 import { minCanvasSizeForAspect } from '../utils/psdHelper';
@@ -199,6 +199,17 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
             </label>
             <div className="grid grid-cols-2 gap-2">
                 <button
+                    onClick={() => onAiSourceChange('vertex')}
+                    className={`flex items-center justify-center gap-2 p-2 rounded-lg border text-xs font-semibold transition-all ${
+                        aiSource === 'vertex'
+                        ? 'bg-sky-900/30 border-sky-500/60 text-sky-200 ring-1 ring-sky-500/20'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
+                >
+                    <i className={`fa-brands fa-google ${aiSource === 'vertex' ? 'text-sky-400' : 'text-slate-500'}`}></i>
+                    Vertex AI
+                </button>
+                <button
                     onClick={() => onAiSourceChange('fal')}
                     className={`flex items-center justify-center gap-2 p-2 rounded-lg border text-xs font-semibold transition-all ${
                         aiSource === 'fal'
@@ -208,23 +219,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = React.memo(({
                 >
                     <i className={`fa-solid fa-cloud ${aiSource === 'fal' ? 'text-orange-400' : 'text-slate-500'}`}></i>
                     fal.ai
-                </button>
-                <button
-                    onClick={() => {
-                        onAiSourceChange('vertex');
-                        // 若当前模型不支持 Vertex，自动切换到 nano-banana
-                        if (!VERTEX_SUPPORTED_MODELS.includes(selectedModel)) {
-                            onSelectModel('fal-ai/nano-banana');
-                        }
-                    }}
-                    className={`flex items-center justify-center gap-2 p-2 rounded-lg border text-xs font-semibold transition-all ${
-                        aiSource === 'vertex'
-                        ? 'bg-sky-900/30 border-sky-500/60 text-sky-200 ring-1 ring-sky-500/20'
-                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
-                    }`}
-                >
-                    <i className={`fa-brands fa-google ${aiSource === 'vertex' ? 'text-sky-400' : 'text-slate-500'}`}></i>
-                    Vertex AI
                 </button>
             </div>
             {aiSource === 'vertex' && (
