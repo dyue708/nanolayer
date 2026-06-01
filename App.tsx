@@ -18,6 +18,7 @@ import {
   VERTEX_SUPPORTED_MODELS,
   readStoredAiSource,
   persistAiSource,
+  LAYER_DRAG_MIME,
 } from './types';
 import { aspectRatioFromDimensions } from './utils/aspectRatio';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail, buildPaddedEditSource, mapSelectionToPaddedImagePercent } from './utils/psdHelper';
@@ -244,19 +245,28 @@ const App: React.FC = () => {
     [addLayersFromFiles, appendPsdFromFile]
   );
 
-  const handleMainDragEnter = useCallback((e: React.DragEvent) => {
+  const isExternalFileDrag = useCallback((e: React.DragEvent) => {
     const types = Array.from(e.dataTransfer?.types ?? []);
-    if (!types.includes('Files')) return;
-    e.preventDefault();
-    setFileDropHover(true);
+    return types.includes('Files') && !types.includes(LAYER_DRAG_MIME);
   }, []);
 
-  const handleMainDragOver = useCallback((e: React.DragEvent) => {
-    const types = Array.from(e.dataTransfer?.types ?? []);
-    if (!types.includes('Files')) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  }, []);
+  const handleMainDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      if (!isExternalFileDrag(e)) return;
+      e.preventDefault();
+      setFileDropHover(true);
+    },
+    [isExternalFileDrag]
+  );
+
+  const handleMainDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!isExternalFileDrag(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    },
+    [isExternalFileDrag]
+  );
 
   const handleMainDragLeave = useCallback((e: React.DragEvent) => {
     const next = e.relatedTarget as Node | null;
@@ -268,6 +278,7 @@ const App: React.FC = () => {
     async (e: React.DragEvent) => {
       e.preventDefault();
       setFileDropHover(false);
+      if (Array.from(e.dataTransfer.types).includes(LAYER_DRAG_MIME)) return;
       const raw = Array.from(e.dataTransfer.files);
       const list = raw.filter(isImportableLayerFile);
       if (list.length === 0) {
@@ -450,6 +461,21 @@ const App: React.FC = () => {
         const newLayers = [...prev];
         [newLayers[index], newLayers[index - 1]] = [newLayers[index - 1], newLayers[index]];
         return newLayers.map((l, i) => ({...l, zIndex: i}));
+    });
+  }, []);
+
+  /** 图层面板拖放排序（列表自上而下 = 画布从上到下） */
+  const handleReorderLayer = useCallback((draggedId: string, targetId: string) => {
+    if (draggedId === targetId) return;
+    setLayers((prev) => {
+      const display = [...prev].reverse();
+      const fromIdx = display.findIndex((l) => l.id === draggedId);
+      const toIdx = display.findIndex((l) => l.id === targetId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const nextDisplay = [...display];
+      const [removed] = nextDisplay.splice(fromIdx, 1);
+      nextDisplay.splice(toIdx, 0, removed);
+      return nextDisplay.reverse().map((l, i) => ({ ...l, zIndex: i }));
     });
   }, []);
 
@@ -975,6 +1001,7 @@ const App: React.FC = () => {
                 onAddLayer={() => addLayerInputRef.current?.click()}
                 onMoveLayerUp={handleMoveLayerUp}
                 onMoveLayerDown={handleMoveLayerDown}
+                onReorderLayer={handleReorderLayer}
                 lang={language}
                 onClose={() => setMobilePanel('none')}
             />

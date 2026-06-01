@@ -1,4 +1,7 @@
 
+/** 图层面板内拖拽排序时 dataTransfer 的 MIME 类型（区别于系统文件拖入） */
+export const LAYER_DRAG_MIME = 'application/x-nanolayer-layer-id';
+
 export interface Layer {
   id: string;
   name: string;

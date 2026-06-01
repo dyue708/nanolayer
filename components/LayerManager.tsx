@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Layer, Language } from '../types';
+import React, { useState } from 'react';
+import { Layer, Language, LAYER_DRAG_MIME } from '../types';
 import { t } from '../utils/i18n';
 
 interface LayerManagerProps {
@@ -15,6 +15,7 @@ interface LayerManagerProps {
   onAddLayer: () => void;
   onMoveLayerUp: (id: string) => void;
   onMoveLayerDown: (id: string) => void;
+  onReorderLayer: (draggedId: string, targetId: string) => void;
   lang: Language;
   onClose?: () => void;
 }
@@ -30,14 +31,66 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
   onAddLayer,
   onMoveLayerUp,
   onMoveLayerDown,
+  onReorderLayer,
   lang,
   onClose
 }) => {
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+
   // Render layers in reverse order for the list (Top layer at top of list)
   const displayLayers = [...layers].reverse();
 
+  const handleLayerDragStart = (e: React.DragEvent, layerId: string) => {
+    e.dataTransfer.setData(LAYER_DRAG_MIME, layerId);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingId(layerId);
+  };
+
+  const handleLayerDragEnd = () => {
+    setDraggingId(null);
+    setDropTargetId(null);
+  };
+
+  const handleLayerDragOver = (e: React.DragEvent, layerId: string) => {
+    if (!e.dataTransfer.types.includes(LAYER_DRAG_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    if (layerId !== draggingId) {
+      setDropTargetId(layerId);
+    }
+  };
+
+  const handleLayerDrop = (e: React.DragEvent, targetId: string) => {
+    if (!e.dataTransfer.types.includes(LAYER_DRAG_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const draggedId = e.dataTransfer.getData(LAYER_DRAG_MIME);
+    if (draggedId && draggedId !== targetId) {
+      onReorderLayer(draggedId, targetId);
+    }
+    setDraggingId(null);
+    setDropTargetId(null);
+  };
+
+  const handleListDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes(LAYER_DRAG_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
-    <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700 w-full md:w-72 shrink-0 shadow-2xl z-20">
+    <div
+      className="flex flex-col h-full bg-slate-900 border-l border-slate-700 w-full md:w-72 shrink-0 shadow-2xl z-20"
+      onDragOver={handleListDragOver}
+      onDrop={(e) => {
+        if (e.dataTransfer.types.includes(LAYER_DRAG_MIME)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+    >
       <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-850 md:bg-transparent min-h-[56px] pt-[env(safe-area-inset-top)]">
         <div className="flex items-center gap-3">
             {onClose && (
@@ -61,24 +114,45 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
            const isBottom = index === displayLayers.length - 1;
            const isRef = referenceLayerIds.includes(layer.id);
            const isActive = activeLayerId === layer.id;
+           const isDragging = draggingId === layer.id;
+           const isDropTarget = dropTargetId === layer.id && draggingId !== layer.id;
 
            return (
             <div
                 key={layer.id}
                 onClick={() => onSelectLayer(layer.id)}
+                onDragOver={(e) => handleLayerDragOver(e, layer.id)}
+                onDragLeave={() => {
+                  if (dropTargetId === layer.id) setDropTargetId(null);
+                }}
+                onDrop={(e) => handleLayerDrop(e, layer.id)}
                 className={`group flex items-center p-2 rounded-xl cursor-pointer transition-all border-2 ${
                 isActive
                     ? 'bg-blue-500/10 border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
                     : 'bg-slate-800/60 border-transparent hover:bg-slate-800 border-slate-700/30'
+                } ${isDragging ? 'opacity-40 scale-[0.98]' : ''} ${
+                  isDropTarget ? 'ring-2 ring-amber-400/60 border-amber-500/50' : ''
                 }`}
             >
+                {/* 拖动手柄：仅此处可拖动排序，避免缩略图触发浏览器默认图片拖放 */}
+                <div
+                    draggable
+                    onDragStart={(e) => handleLayerDragStart(e, layer.id)}
+                    onDragEnd={handleLayerDragEnd}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-6 h-10 flex items-center justify-center rounded-lg text-slate-600 hover:text-slate-300 hover:bg-slate-700/80 cursor-grab active:cursor-grabbing shrink-0 mr-1 touch-none"
+                    title={t(lang, 'layerDragReorder')}
+                >
+                    <i className="fa-solid fa-grip-vertical text-[10px]"></i>
+                </div>
+
                 {/* Visibility Toggle */}
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         onToggleVisibility(layer.id);
                     }}
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 mr-2 shrink-0 transition-colors ${
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 mr-1 shrink-0 transition-colors ${
                         layer.visible ? 'text-blue-400 bg-blue-500/5' : 'text-slate-600 bg-slate-900/40'
                     }`}
                     title="Toggle Visibility"
@@ -93,8 +167,9 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                     <div className="absolute inset-0 checkerboard-bg opacity-30"></div>
                     <img 
                         src={layer.thumbnail || layer.canvas.toDataURL()} 
-                        alt="thumb" 
-                        className="absolute inset-0 w-full h-full object-cover" 
+                        alt=""
+                        draggable={false}
+                        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" 
                     />
                     {isRef && (
                         <div className="absolute inset-0 ring-2 ring-inset ring-indigo-500 bg-indigo-500/30 pointer-events-none flex items-center justify-center">
@@ -104,7 +179,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                 </div>
 
                 {/* Layer Name - Opacity slider removed for space */}
-                <div className="ml-3 flex-1 min-w-0">
+                <div className="ml-2 flex-1 min-w-0">
                     <p className={`text-xs font-black truncate transition-colors uppercase tracking-tight ${isActive ? 'text-blue-100' : 'text-slate-300'}`}>
                         {layer.name}
                     </p>
@@ -114,7 +189,7 @@ const LayerManager: React.FC<LayerManagerProps> = React.memo(({
                 </div>
                 
                 {/* Right Side Actions Group */}
-                <div className="flex items-center gap-1 shrink-0 ml-2">
+                <div className="flex items-center gap-1 shrink-0 ml-1">
                     
                     {/* Reference Toggle */}
                     {!isActive && (
