@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ImageHistoryItem, getImageHistory } from '../services/apiService';
 import { Language } from '../types';
 import { t } from '../utils/i18n';
@@ -9,6 +9,28 @@ interface HistoryPanelProps {
   lang: Language;
   onSelectImage?: (image: ImageHistoryItem) => void;
   onReusePrompt?: (prompt: string) => void;
+}
+
+const PAGE_SIZE_OPTIONS = [20, 40, 60] as const;
+
+type PageToken = number | 'ellipsis';
+
+function buildVisiblePages(current: number, totalPages: number): PageToken[] {
+  if (totalPages <= 1) return [1];
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const pages: PageToken[] = [1];
+  const windowStart = Math.max(2, current - 1);
+  const windowEnd = Math.min(totalPages - 1, current + 1);
+
+  if (windowStart > 2) pages.push('ellipsis');
+  for (let i = windowStart; i <= windowEnd; i++) pages.push(i);
+  if (windowEnd < totalPages - 1) pages.push('ellipsis');
+  if (totalPages > 1) pages.push(totalPages);
+
+  return pages;
 }
 
 // 将存储的模型 ID（如 `fal-ai/nano-banana/edit`、`vertex/nano-banana-pro`）
@@ -59,17 +81,16 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   const [images, setImages] = useState<ImageHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState<number>(PAGE_SIZE_OPTIONS[0]);
   const [total, setTotal] = useState(0);
   const [onlyMine, setOnlyMine] = useState(false);
-  const limit = 20;
+  const [jumpInput, setJumpInput] = useState('');
+  const listRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadHistory();
-    }
-  }, [isOpen, page, onlyMine]);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const visiblePages = useMemo(() => buildVisiblePages(page, totalPages), [page, totalPages]);
 
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getImageHistory(page, limit, { onlyMine });
@@ -81,7 +102,44 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
     } finally {
       setLoading(false);
     }
+  }, [page, limit, onlyMine]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadHistory();
+    }
+  }, [isOpen, loadHistory]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [page, limit]);
+
+  useEffect(() => {
+    setJumpInput(String(page));
+  }, [page]);
+
+  const goToPage = (target: number) => {
+    const next = Math.min(Math.max(1, target), totalPages);
+    setPage(next);
+    setJumpInput(String(next));
   };
+
+  const handleJumpSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseInt(jumpInput, 10);
+    if (!Number.isNaN(parsed)) {
+      goToPage(parsed);
+    }
+  };
+
+  const rangeStart = total === 0 ? 0 : (page - 1) * limit + 1;
+  const rangeEnd = Math.min(page * limit, total);
 
   if (!isOpen) return null;
 
@@ -89,9 +147,18 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
     <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-5 border-b border-slate-800 flex justify-between items-center gap-3 shrink-0">
-          <h2 className="font-black text-white uppercase tracking-widest text-sm">
-            {t(lang, 'history') || 'History'}
-          </h2>
+          <div>
+            <h2 className="font-black text-white uppercase tracking-widest text-sm">
+              {t(lang, 'history') || 'History'}
+            </h2>
+            {total > 0 && (
+              <p className="text-[10px] text-slate-500 mt-1">
+                {lang === 'zh'
+                  ? `共 ${total} ${t(lang, 'historyTotalItems')} · 第 ${rangeStart}–${rangeEnd} 条`
+                  : `${total} ${t(lang, 'historyTotalItems')} · showing ${rangeStart}–${rangeEnd}`}
+              </p>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -115,7 +182,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div ref={listRef} className="flex-1 overflow-y-auto p-4 custom-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-8 h-8 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
@@ -132,7 +199,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                   key={image.id}
                   className="bg-slate-800 rounded-lg overflow-hidden border border-slate-700 hover:border-blue-500 transition-all cursor-pointer group"
                   onClick={() => {
-                    // 同时加载图片和提示词
                     onSelectImage?.(image);
                     if (onReusePrompt) {
                       onReusePrompt(image.prompt);
@@ -156,7 +222,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              // 只重新使用提示词，不加载图片
                               onReusePrompt(image.prompt);
                               onClose();
                             }}
@@ -171,7 +236,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              // 只加载图片到画布，不重新使用提示词
                               onSelectImage(image);
                               onClose();
                             }}
@@ -219,25 +283,108 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
           )}
         </div>
 
-        {total > limit && (
-          <div className="p-4 border-t border-slate-800 flex justify-between items-center shrink-0">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-white rounded"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-slate-400">
-              Page {page} of {Math.ceil(total / limit)}
-            </span>
-            <button
-              onClick={() => setPage(p => p + 1)}
-              disabled={page >= Math.ceil(total / limit)}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-white rounded"
-            >
-              Next
-            </button>
+        {total > 0 && (
+          <div className="p-3 md:p-4 border-t border-slate-800 shrink-0 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="flex items-center gap-2 text-xs text-slate-400">
+                <span>{t(lang, 'historyPerPage')}</span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-xs"
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <form onSubmit={handleJumpSubmit} className="flex items-center gap-2 text-xs text-slate-400">
+                <span>{t(lang, 'historyJumpTo')}</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={jumpInput}
+                  onChange={(e) => setJumpInput(e.target.value)}
+                  placeholder={String(page)}
+                  className="w-14 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-xs text-center"
+                />
+                <span className="text-slate-500">/ {totalPages}</span>
+                <button
+                  type="submit"
+                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-white"
+                >
+                  OK
+                </button>
+              </form>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => goToPage(1)}
+                  disabled={page === 1}
+                  title={t(lang, 'historyFirst')}
+                  className="min-w-[2rem] px-2 py-1.5 rounded text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300"
+                >
+                  <i className="fa-solid fa-angles-left"></i>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 rounded text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300"
+                >
+                  {t(lang, 'historyPrev')}
+                </button>
+
+                {visiblePages.map((token, idx) =>
+                  token === 'ellipsis' ? (
+                    <span key={`ellipsis-${idx}`} className="px-1 text-slate-600 text-xs select-none">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={token}
+                      type="button"
+                      onClick={() => goToPage(token)}
+                      className={`min-w-[2rem] px-2 py-1.5 rounded text-xs font-mono transition-colors ${
+                        token === page
+                          ? 'bg-blue-600 text-white ring-1 ring-blue-400/50'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                      }`}
+                    >
+                      {token}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => goToPage(page + 1)}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1.5 rounded text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300"
+                >
+                  {t(lang, 'historyNext')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goToPage(totalPages)}
+                  disabled={page >= totalPages}
+                  title={t(lang, 'historyLast')}
+                  className="min-w-[2rem] px-2 py-1.5 rounded text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300"
+                >
+                  <i className="fa-solid fa-angles-right"></i>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -246,4 +393,3 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
 };
 
 export default HistoryPanel;
-
