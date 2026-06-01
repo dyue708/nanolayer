@@ -23,6 +23,9 @@ export enum ToolMode {
   MOVE = 'MOVE',
 }
 
+/** 中间工作区展示：画布堆叠 vs 图层平铺总览 */
+export type WorkspaceViewMode = 'canvas' | 'overview';
+
 export interface AnalysisResult {
   text: string;
   timestamp: number;

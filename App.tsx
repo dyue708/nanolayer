@@ -2,10 +2,10 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import LayerManager from './components/LayerManager';
 import Workspace from './components/Workspace';
+import WorkspaceViewSwitcher from './components/WorkspaceViewSwitcher';
 import AnalysisPanel from './components/AnalysisPanel';
 import ConfigPanel from './components/ConfigPanel';
 import PromptBar from './components/PromptBar';
-import PromptGallery from './components/PromptGallery';
 import HistoryPanel from './components/HistoryPanel';
 import {
   Layer,
@@ -19,6 +19,7 @@ import {
   readStoredAiSource,
   persistAiSource,
   LAYER_DRAG_MIME,
+  WorkspaceViewMode,
 } from './types';
 import { aspectRatioFromDimensions } from './utils/aspectRatio';
 import { parsePsdFile, parseImageFile, canvasToBase64, base64ToCanvas, base64ToCanvasNatural, exportToPsd, generateThumbnail, buildPaddedEditSource, mapSelectionToPaddedImagePercent } from './utils/psdHelper';
@@ -30,8 +31,6 @@ import {
   getStoredAppSessionToken,
 } from './services/apiService';
 import { t } from './utils/i18n';
-import { PromptExample } from './utils/promptExamples';
-
 type MobilePanel = 'none' | 'layers' | 'config' | 'tools';
 
 const USAGE_GUIDE_URL = 'https://xingye.feishu.cn/wiki/J9ykw7jwGirdZckYhjicIC3jnCd';
@@ -63,6 +62,7 @@ const App: React.FC = () => {
   const [canvasDims, setCanvasDims] = useState({ width: 0, height: 0 });
   
   const [mode, setMode] = useState<ToolMode>(ToolMode.EDIT);
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceViewMode>('canvas');
   const [selection, setSelection] = useState<SelectionRect | null>(null);
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -85,9 +85,7 @@ const App: React.FC = () => {
   const [referenceLayerIds, setReferenceLayerIds] = useState<string[]>([]);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const [showGallery, setShowGallery] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const pendingPromptRef = useRef<PromptExample | null>(null);
 
   const [showSettings, setShowSettings] = useState(false);
   const [language, setLanguage] = useState<Language>('zh');
@@ -387,17 +385,6 @@ const App: React.FC = () => {
     } finally {
       setIsProcessing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
-
-      // 如果是从需要图片的示例触发的上传，上传完成后自动填入对应提示词
-      if (pendingPromptRef.current) {
-          const example = pendingPromptRef.current;
-          pendingPromptRef.current = null;
-
-          setSystemInstruction('');
-          const textToUse = (language === 'zh' && example.promptZh) ? example.promptZh : example.prompt;
-          setReusedPrompt(textToUse);
-          setTimeout(() => setReusedPrompt(undefined), 100);
-      }
     }
   };
 
@@ -411,6 +398,21 @@ const App: React.FC = () => {
       setActiveLayerId(id);
       setReferenceLayerIds(prev => prev.filter(rid => rid !== id));
   }, []);
+
+  const handleWorkspaceViewChange = useCallback(
+    (view: WorkspaceViewMode) => {
+      setWorkspaceView(view);
+      if (view === 'overview') {
+        setSelection(null);
+        setMode((m) =>
+          m === ToolMode.MOVE || m === ToolMode.SELECT ? ToolMode.EDIT : m
+        );
+      }
+    },
+    []
+  );
+
+  const isOverviewView = workspaceView === 'overview';
   
   const handleToggleReference = useCallback((id: string) => {
       setReferenceLayerIds(prev => {
@@ -854,20 +856,6 @@ const App: React.FC = () => {
       }
   }, [mode]);
 
-  const handleSelectFromGallery = useCallback((example: PromptExample) => {
-      if (example.requiresImage && layers.length === 0) {
-          alert(t(language, 'uploadImageFirst'));
-          pendingPromptRef.current = example;
-          fileInputRef.current?.click();
-          setShowGallery(false);
-          return;
-      }
-      setSystemInstruction('');
-      const textToUse = (language === 'zh' && example.promptZh) ? example.promptZh : example.prompt;
-      setShowGallery(false);
-      handleReusePrompt(textToUse);
-  }, [layers, language, handleReusePrompt]);
-
   const exportImage = () => {
       if (canvasDims.width === 0) return;
       const exportCanvas = document.createElement('canvas');
@@ -972,14 +960,24 @@ const App: React.FC = () => {
         )}
         <div className="flex flex-col z-10 hidden md:flex">
             <div className="w-16 bg-slate-900 border-r border-slate-700 flex flex-col items-center py-6 gap-5 h-full">
-                 <button onClick={() => setMode(ToolMode.MOVE)} className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl transition-all ${mode === ToolMode.MOVE ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`} title={t(language, 'toolMove')}>
+                 <button
+                    onClick={() => setMode(ToolMode.MOVE)}
+                    disabled={isOverviewView}
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed ${mode === ToolMode.MOVE && !isOverviewView ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`}
+                    title={t(language, 'toolMove')}
+                 >
                     <i className="fa-solid fa-arrows-up-down-left-right"></i>
                  </button>
                  <div className="w-8 h-px bg-slate-800"></div>
                  <button onClick={() => setMode(ToolMode.EDIT)} className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl transition-all ${mode === ToolMode.EDIT ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`} title={t(language, 'toolEdit')}>
                     <i className="fa-solid fa-wand-magic-sparkles"></i>
                  </button>
-                 <button onClick={() => setMode(ToolMode.SELECT)} className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl transition-all ${mode === ToolMode.SELECT ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-500/40' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`} title={t(language, 'toolSelect')}>
+                 <button
+                    onClick={() => setMode(ToolMode.SELECT)}
+                    disabled={isOverviewView}
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed ${mode === ToolMode.SELECT && !isOverviewView ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-500/40' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`}
+                    title={t(language, 'toolSelect')}
+                 >
                     <i className="fa-solid fa-crop-simple"></i>
                  </button>
                  <div className="w-8 h-px bg-slate-800"></div>
@@ -1006,18 +1004,28 @@ const App: React.FC = () => {
                 onClose={() => setMobilePanel('none')}
             />
         </div>
-        <Workspace 
-            width={canvasDims.width} 
-            height={canvasDims.height} 
-            layers={layers} 
+        <div className="flex-1 relative min-w-0 flex flex-col overflow-hidden">
+          <Workspace
+            width={canvasDims.width}
+            height={canvasDims.height}
+            layers={layers}
             activeLayerId={activeLayerId}
+            viewMode={workspaceView}
             mode={mode}
             selection={selection}
             onSelectionChange={setSelection}
             onLayerMove={handleLayerMove}
+            onSelectLayer={handleLayerSelect}
             lang={language}
-            onOpenGallery={() => setShowGallery(true)}
-        />
+          />
+          <div className="absolute bottom-20 md:bottom-6 left-4 z-40 pointer-events-none">
+            <WorkspaceViewSwitcher
+              viewMode={workspaceView}
+              onViewModeChange={handleWorkspaceViewChange}
+              lang={language}
+            />
+          </div>
+        </div>
         <div className={`${mobilePanel === 'config' ? 'fixed inset-0 z-50 bg-slate-950 flex flex-col' : 'hidden'} md:relative md:flex md:z-0 pointer-events-none md:pointer-events-auto md:bg-transparent md:inset-auto`}>
             <div className="pointer-events-auto h-full relative z-10 w-full md:w-auto">
                 {showAnalysis ? (
@@ -1046,7 +1054,6 @@ const App: React.FC = () => {
                         systemInstruction={systemInstruction}
                         onSystemInstructionChange={setSystemInstruction}
                         onApplyTemplate={handleApplyTemplate}
-                        onOpenGallery={() => setShowGallery(true)}
                     />
                 )}
             </div>
@@ -1056,6 +1063,7 @@ const App: React.FC = () => {
                 onGenerate={handleGeminiAction}
                 isProcessing={isProcessing}
                 mode={mode}
+                workspaceView={workspaceView}
                 activeLayerId={activeLayerId}
                 selection={selection}
                 referenceLayerIds={referenceLayerIds}
@@ -1064,7 +1072,6 @@ const App: React.FC = () => {
                 allLayers={layers}
                 lang={language}
                 externalPrompt={reusedPrompt}
-                onOpenGallery={() => setShowGallery(true)}
             />
         </div>
       </div>
@@ -1106,7 +1113,6 @@ const App: React.FC = () => {
               </div>
           </div>
       )}
-      <PromptGallery isOpen={showGallery} onClose={() => setShowGallery(false)} onSelect={handleSelectFromGallery} lang={language} />
       <HistoryPanel 
         isOpen={showHistory} 
         onClose={() => setShowHistory(false)} 

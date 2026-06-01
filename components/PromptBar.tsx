@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Layer, ToolMode, Language, SelectionRect } from '../types';
+import { Layer, ToolMode, Language, SelectionRect, WorkspaceViewMode } from '../types';
 import { t } from '../utils/i18n';
 
 interface PromptBarProps {
   onGenerate: (prompt: string) => void;
   isProcessing: boolean;
   mode: ToolMode;
+  workspaceView?: WorkspaceViewMode;
   activeLayerId: string | null;
   selection: SelectionRect | null;
   
@@ -20,13 +21,13 @@ interface PromptBarProps {
   
   // Reuse Prompt
   externalPrompt?: string;
-  onOpenGallery: () => void;
 }
 
 const PromptBar: React.FC<PromptBarProps> = ({
   onGenerate,
   isProcessing,
   mode,
+  workspaceView = 'canvas',
   activeLayerId,
   selection,
   referenceLayerIds,
@@ -34,7 +35,6 @@ const PromptBar: React.FC<PromptBarProps> = ({
   allLayers,
   lang,
   externalPrompt,
-  onOpenGallery
 }) => {
   const [prompt, setPrompt] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -107,16 +107,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
             <div className={`w-8 h-8 mb-0.5 rounded-full flex items-center justify-center shrink-0 ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'bg-blue-600' : 'bg-purple-600'}`}>
                 <i className={`fa-solid ${mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE ? 'fa-wand-magic-sparkles' : 'fa-magnifying-glass'} text-white text-xs`}></i>
             </div>
-            
-            {/* Gallery Button */}
-            <button 
-                onClick={onOpenGallery}
-                className="w-8 h-8 mb-0.5 rounded-full flex items-center justify-center shrink-0 bg-slate-800 text-blue-400 hover:bg-blue-600 hover:text-white transition-all border border-slate-600 hover:border-blue-500"
-                title={t(lang, 'browseGallery')}
-            >
-                <i className="fa-solid fa-book-open text-xs"></i>
-            </button>
-            
+
             {/* Input Wrapper */}
             <div className="flex-1 flex items-start gap-2 bg-slate-800/50 rounded-xl px-3 py-2 border border-transparent focus-within:border-slate-600 focus-within:bg-slate-800 transition-all min-h-[44px]">
                 <textarea
@@ -125,13 +116,20 @@ const PromptBar: React.FC<PromptBarProps> = ({
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={
-                        selection 
-                            ? t(lang, 'promptPlaceholderSelection') 
+                        workspaceView === 'overview'
+                            ? activeLayerId
+                                ? (selectedRefLayers.length > 0
+                                    ? t(lang, 'promptPlaceholderRef')
+                                    : t(lang, 'promptPlaceholderOverview'))
+                                : t(lang, 'promptPlaceholderGenerate')
+                            : selection
+                            ? t(lang, 'promptPlaceholderSelection')
                             : mode === ToolMode.EDIT || mode === ToolMode.SELECT || mode === ToolMode.MOVE
-                                ? (activeLayerId 
-                                    ? (selectedRefLayers.length > 0 ? t(lang, 'promptPlaceholderRef') : t(lang, 'promptPlaceholderLayer'))
-                                    : t(lang, 'promptPlaceholderGenerate')
-                                )
+                                ? (activeLayerId
+                                    ? (selectedRefLayers.length > 0
+                                        ? t(lang, 'promptPlaceholderRef')
+                                        : t(lang, 'promptPlaceholderLayer'))
+                                    : t(lang, 'promptPlaceholderGenerate'))
                                 : t(lang, 'promptPlaceholderDefault')
                     }
                     rows={1}
