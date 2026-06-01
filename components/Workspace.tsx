@@ -60,12 +60,14 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
   }, [viewMode]);
 
   useEffect(() => {
-    if (viewMode !== 'overview' || !activeLayerId) return;
+    if (viewMode !== 'overview') return;
+    const scrollTargetId = expandedLayerId ?? activeLayerId;
+    if (!scrollTargetId) return;
     const el =
-      layerCardRefs.current.get(activeLayerId) ??
-      containerRef.current?.querySelector<HTMLElement>(`[data-layer-id="${activeLayerId}"]`);
+      layerCardRefs.current.get(scrollTargetId) ??
+      containerRef.current?.querySelector<HTMLElement>(`[data-layer-id="${scrollTargetId}"]`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [activeLayerId, viewMode, panelOrderedLayers.length]);
+  }, [activeLayerId, expandedLayerId, viewMode, panelOrderedLayers.length]);
 
   const expandedLayer = expandedLayerId
     ? layers.find((l) => l.id === expandedLayerId)
@@ -247,6 +249,12 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
         <OverviewLayerExpanded
           layer={expandedLayer}
           lang={lang}
+          orderedLayerIds={panelOrderedLayers.map((l) => l.id)}
+          currentIndex={panelOrderedLayers.findIndex((l) => l.id === expandedLayerId)}
+          onNavigate={(id) => {
+            setExpandedLayerId(id);
+            onSelectLayer(id);
+          }}
           onClose={() => setExpandedLayerId(null)}
         />
       )}

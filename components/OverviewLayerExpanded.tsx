@@ -37,10 +37,20 @@ function buildFitTransform(
 interface OverviewLayerExpandedProps {
   layer: Layer;
   lang: Language;
+  orderedLayerIds: string[];
+  currentIndex: number;
+  onNavigate: (layerId: string) => void;
   onClose: () => void;
 }
 
-const OverviewLayerExpanded: React.FC<OverviewLayerExpandedProps> = ({ layer, lang, onClose }) => {
+const OverviewLayerExpanded: React.FC<OverviewLayerExpandedProps> = ({
+  layer,
+  lang,
+  orderedLayerIds,
+  currentIndex,
+  onNavigate,
+  onClose,
+}) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const wheelZoneRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState<LayerViewportTransform | null>(null);
@@ -137,13 +147,51 @@ const OverviewLayerExpanded: React.FC<OverviewLayerExpandedProps> = ({ layer, la
     return () => zone.removeEventListener('wheel', onWheel);
   }, [applyWheelZoom]);
 
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex >= 0 && currentIndex < orderedLayerIds.length - 1;
+
+  const goPrev = useCallback(() => {
+    if (!hasPrev) return;
+    onNavigate(orderedLayerIds[currentIndex - 1]);
+  }, [hasPrev, currentIndex, orderedLayerIds, onNavigate]);
+
+  const goNext = useCallback(() => {
+    if (!hasNext) return;
+    onNavigate(orderedLayerIds[currentIndex + 1]);
+  }, [hasNext, currentIndex, orderedLayerIds, onNavigate]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        goPrev();
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        goNext();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, goPrev, goNext]);
+
+  const layerPositionLabel =
+    currentIndex >= 0 && orderedLayerIds.length > 0
+      ? t(lang, 'overviewExpandedLayerOf')
+          .replace('{current}', String(currentIndex + 1))
+          .replace('{total}', String(orderedLayerIds.length))
+      : null;
+
+  const navBtnClass =
+    'w-10 h-10 rounded-full flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-600 disabled:opacity-25 disabled:pointer-events-none transition-colors';
 
   const handlePanStart = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -189,11 +237,32 @@ const OverviewLayerExpanded: React.FC<OverviewLayerExpandedProps> = ({ layer, la
       aria-label={layer.name}
     >
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-700/80 bg-slate-900/95 shrink-0">
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-white truncate">{layer.name}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">
-            {bounds.width}×{bounds.height} · {t(lang, 'overviewExpandedEsc')}
-          </p>
+        <div className="min-w-0 flex items-center gap-2">
+          <button
+            type="button"
+            className={`${navBtnClass} shrink-0 !w-8 !h-8`}
+            disabled={!hasPrev}
+            title={t(lang, 'overviewExpandedPrev')}
+            onClick={goPrev}
+          >
+            <i className="fa-solid fa-chevron-left text-xs" />
+          </button>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-white truncate">{layer.name}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">
+              {layerPositionLabel && <span className="text-slate-400 mr-1.5">{layerPositionLabel}</span>}
+              {bounds.width}×{bounds.height} · {t(lang, 'overviewExpandedEsc')}
+            </p>
+          </div>
+          <button
+            type="button"
+            className={`${navBtnClass} shrink-0 !w-8 !h-8`}
+            disabled={!hasNext}
+            title={t(lang, 'overviewExpandedNext')}
+            onClick={goNext}
+          >
+            <i className="fa-solid fa-chevron-right text-xs" />
+          </button>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -231,7 +300,25 @@ const OverviewLayerExpanded: React.FC<OverviewLayerExpandedProps> = ({ layer, la
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 min-h-0">
+      <div className="flex-1 relative flex items-center justify-center p-4 min-h-0">
+        <button
+          type="button"
+          className={`absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-10 ${navBtnClass}`}
+          disabled={!hasPrev}
+          title={t(lang, 'overviewExpandedPrev')}
+          onClick={goPrev}
+        >
+          <i className="fa-solid fa-chevron-left" />
+        </button>
+        <button
+          type="button"
+          className={`absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-10 ${navBtnClass}`}
+          disabled={!hasNext}
+          title={t(lang, 'overviewExpandedNext')}
+          onClick={goNext}
+        >
+          <i className="fa-solid fa-chevron-right" />
+        </button>
         <div
           ref={wheelZoneRef}
           className="rounded-xl border border-slate-600 overflow-hidden overscroll-contain shadow-2xl"
