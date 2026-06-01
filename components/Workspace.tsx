@@ -191,8 +191,9 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
   );
 
   const noCanvas = width === 0 || height === 0;
+  const isWorkspaceEmpty = layers.length === 0 && noCanvas;
 
-  if (viewMode === 'canvas' && layers.length === 0 && noCanvas) {
+  if (isWorkspaceEmpty) {
     return (
       <div ref={containerRef} className="flex-1 relative flex flex-col bg-slate-950">
         {emptyPlaceholder}
@@ -221,30 +222,26 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
           </span>
         </div>
 
-        {panelOrderedLayers.length === 0 ? (
-          emptyPlaceholder
-        ) : (
-          <div className="p-4 md:p-6 pb-28">
-            <div className="flex flex-col items-center gap-6 max-w-3xl mx-auto">
-              {panelOrderedLayers.map((layer, index) => (
-                <OverviewLayerCard
-                  key={layer.id}
-                  ref={(el) => registerLayerCardRef(layer.id, el)}
-                  layer={layer}
-                  index={index}
-                  isActive={activeLayerId === layer.id}
-                  isSpotlight={expandedLayerId === layer.id}
-                  lang={lang}
-                  onSelect={() => onSelectLayer(layer.id)}
-                  onExpand={() => {
-                    onSelectLayer(layer.id);
-                    setExpandedLayerId(layer.id);
-                  }}
-                />
-              ))}
-            </div>
+        <div className="p-4 md:p-6 pb-28">
+          <div className="flex flex-col items-center gap-6 max-w-3xl mx-auto">
+            {panelOrderedLayers.map((layer, index) => (
+              <OverviewLayerCard
+                key={layer.id}
+                ref={(el) => registerLayerCardRef(layer.id, el)}
+                layer={layer}
+                index={index}
+                isActive={activeLayerId === layer.id}
+                isSpotlight={expandedLayerId === layer.id}
+                lang={lang}
+                onSelect={() => onSelectLayer(layer.id)}
+                onExpand={() => {
+                  onSelectLayer(layer.id);
+                  setExpandedLayerId(layer.id);
+                }}
+              />
+            ))}
           </div>
-        )}
+        </div>
       </div>
       {expandedLayer && (
         <OverviewLayerExpanded
