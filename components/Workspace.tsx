@@ -37,7 +37,8 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
   lang,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const overviewScrollRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
@@ -59,15 +60,61 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
     }
   }, [viewMode]);
 
+  const scrollOverviewLayerIntoView = useCallback((layerId: string, behavior: ScrollBehavior = 'smooth') => {
+    const container = overviewScrollRef.current;
+    if (!container) return;
+    const el =
+      layerCardRefs.current.get(layerId) ??
+      container.querySelector<HTMLElement>(`[data-layer-id="${layerId}"]`);
+    if (!el) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const targetTop =
+      container.scrollTop +
+      (elRect.top - containerRect.top) -
+      containerRect.height / 2 +
+      elRect.height / 2;
+    container.scrollTo({ top: Math.max(0, targetTop), behavior });
+  }, []);
+
   useEffect(() => {
     if (viewMode !== 'overview') return;
     const scrollTargetId = expandedLayerId ?? activeLayerId;
     if (!scrollTargetId) return;
-    const el =
-      layerCardRefs.current.get(scrollTargetId) ??
-      containerRef.current?.querySelector<HTMLElement>(`[data-layer-id="${scrollTargetId}"]`);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [activeLayerId, expandedLayerId, viewMode, panelOrderedLayers.length]);
+    scrollOverviewLayerIntoView(scrollTargetId);
+  }, [activeLayerId, expandedLayerId, viewMode, panelOrderedLayers.length, scrollOverviewLayerIntoView]);
+
+  useEffect(() => {
+    if (viewMode !== 'canvas') return;
+
+    const resetAncestorScroll = (start: HTMLElement | null) => {
+      let el: HTMLElement | null = start;
+      while (el) {
+        if (el.scrollTop !== 0) el.scrollTop = 0;
+        if (el.scrollLeft !== 0) el.scrollLeft = 0;
+        el = el.parentElement;
+      }
+    };
+
+    const recalcCanvasScale = () => {
+      const container = canvasContainerRef.current;
+      if (!container || width <= 0 || height <= 0) return;
+      const padding = 40;
+      const availWidth = container.clientWidth - padding;
+      const availHeight = container.clientHeight - padding;
+      if (availWidth <= 0 || availHeight <= 0) return;
+      const scaleW = availWidth / width;
+      const scaleH = availHeight / height;
+      setScale(Math.min(scaleW, scaleH, 1));
+    };
+
+    requestAnimationFrame(() => {
+      resetAncestorScroll(canvasContainerRef.current);
+      recalcCanvasScale();
+      requestAnimationFrame(recalcCanvasScale);
+    });
+  }, [viewMode, width, height]);
 
   const expandedLayer = expandedLayerId
     ? layers.find((l) => l.id === expandedLayerId)
@@ -103,7 +150,7 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
 
   useEffect(() => {
     if (viewMode !== 'canvas') return;
-    const container = containerRef.current;
+    const container = canvasContainerRef.current;
     if (!container) return;
 
     const handleResize = () => {
@@ -111,6 +158,7 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
         const padding = 40;
         const availWidth = container.clientWidth - padding;
         const availHeight = container.clientHeight - padding;
+        if (availWidth <= 0 || availHeight <= 0) return;
         const scaleW = availWidth / width;
         const scaleH = availHeight / height;
         setScale(Math.min(scaleW, scaleH, 1));
@@ -197,7 +245,7 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
 
   if (isWorkspaceEmpty) {
     return (
-      <div ref={containerRef} className="flex-1 relative flex flex-col bg-slate-950">
+      <div className="flex-1 min-h-0 h-full relative flex flex-col bg-slate-950">
         {emptyPlaceholder}
       </div>
     );
@@ -207,8 +255,8 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
     return (
       <>
       <div
-        ref={containerRef}
-        className="flex-1 relative overflow-y-auto overflow-x-hidden overscroll-y-contain bg-slate-950 custom-scrollbar select-none"
+        ref={overviewScrollRef}
+        className="flex-1 min-h-0 h-full relative overflow-y-auto overflow-x-hidden overscroll-y-contain bg-slate-950 custom-scrollbar select-none"
       >
         <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-slate-950/90 border-b border-slate-800 backdrop-blur-sm">
           <div>
@@ -264,7 +312,7 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
 
   if (noCanvas) {
     return (
-      <div ref={containerRef} className="flex-1 relative flex flex-col bg-slate-950">
+      <div className="flex-1 min-h-0 h-full relative flex flex-col bg-slate-950">
         {emptyPlaceholder}
       </div>
     );
@@ -272,8 +320,8 @@ const Workspace: React.FC<WorkspaceProps> = React.memo(({
 
   return (
     <div
-      ref={containerRef}
-      className="flex-1 relative overflow-hidden flex items-center justify-center bg-slate-950 p-4 select-none touch-none"
+      ref={canvasContainerRef}
+      className="flex-1 min-h-0 h-full relative overflow-hidden flex items-center justify-center bg-slate-950 p-4 select-none touch-none"
       onMouseUp={handleInputEnd}
       onMouseLeave={handleInputEnd}
       onTouchEnd={handleInputEnd}

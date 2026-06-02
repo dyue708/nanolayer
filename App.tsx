@@ -1004,7 +1004,7 @@ const App: React.FC = () => {
                 onClose={() => setMobilePanel('none')}
             />
         </div>
-        <div className="flex-1 relative min-w-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 relative min-w-0 flex flex-col overflow-hidden">
           <Workspace
             width={canvasDims.width}
             height={canvasDims.height}
